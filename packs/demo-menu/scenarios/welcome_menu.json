@@ -1,0 +1,10 @@
+{
+  "scenario": "welcome_menu",
+  "description": "User chooses between two options in the hero menu.",
+  "steps": [
+    {"actor": "bot", "message": "Welcome to Greentic."},
+    {"actor": "bot", "message": "Choose an option:", "options": ["About", "Contact"]},
+    {"actor": "user", "message": "About"},
+    {"actor": "bot", "message": "Greentic is building adaptive demos."}
+  ]
+}

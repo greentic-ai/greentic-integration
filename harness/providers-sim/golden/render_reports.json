@@ -1,0 +1,38 @@
+[
+  {
+    "pack_id": "adaptive-advanced",
+    "scenario_id": "advanced_adaptive",
+    "message_count": 5,
+    "bot_messages": 3,
+    "user_messages": 1,
+    "system_messages": 1,
+    "transcript_hash": "58c66415800a409f3d695a4bffdacd7b6998833253eef46dd7e05723231d70af"
+  },
+  {
+    "pack_id": "adaptive-basic",
+    "scenario_id": "basic_adaptive",
+    "message_count": 5,
+    "bot_messages": 3,
+    "user_messages": 2,
+    "system_messages": 0,
+    "transcript_hash": "14523dffb8457cf62ff43cae5a039306ebe554413be30b2b0f780c679414b451"
+  },
+  {
+    "pack_id": "demo-menu",
+    "scenario_id": "welcome_menu",
+    "message_count": 4,
+    "bot_messages": 3,
+    "user_messages": 1,
+    "system_messages": 0,
+    "transcript_hash": "62fa4129b35789b47d690f2df2c8d8b198306a2f1ae04a51925410851411552d"
+  },
+  {
+    "pack_id": "network-scenario-min",
+    "scenario_id": "network_drop",
+    "message_count": 4,
+    "bot_messages": 2,
+    "user_messages": 1,
+    "system_messages": 1,
+    "transcript_hash": "efd9d013b4bb904a7af95524690011cec2161e43e905f775566f20c02a38bef1"
+  }
+]

@@ -1,0 +1,11 @@
+{
+  "scenario": "basic_adaptive",
+  "description": "Collects a name and preference to prove adaptive slot capture.",
+  "steps": [
+    {"actor": "bot", "message": "Hi! What's your name?"},
+    {"actor": "user", "message": "Avery"},
+    {"actor": "bot", "message": "Nice to meet you Avery. Do you prefer SMS or email?"},
+    {"actor": "user", "message": "email"},
+    {"actor": "bot", "message": "Cool, I'll send updates via email."}
+  ]
+}

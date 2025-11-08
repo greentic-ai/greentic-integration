@@ -1,0 +1,11 @@
+{
+  "scenario": "advanced_adaptive",
+  "description": "Demonstrates fallback when a provider lacks capabilities.",
+  "steps": [
+    {"actor": "bot", "message": "Checking provider capabilities."},
+    {"actor": "system", "message": "Primary provider unavailable"},
+    {"actor": "bot", "message": "Falling back to simulator."},
+    {"actor": "user", "message": "confirm"},
+    {"actor": "bot", "message": "Fallback confirmed."}
+  ]
+}

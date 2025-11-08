@@ -1,0 +1,15 @@
+{
+  "name": "idempotency once-only",
+  "runs": [
+    {
+      "tenant_id": "tenant-alpha",
+      "session_id": "session-dup",
+      "events": [
+        {"sequence": 1, "kind": "session_start", "tenant_id": "tenant-alpha"},
+        {"sequence": 2, "kind": "state_write", "tenant_id": "tenant-alpha", "trace_id": "cccccccccccccccccccccccccccccccc"},
+        {"sequence": 3, "kind": "state_write", "tenant_id": "tenant-alpha", "trace_id": "dddddddddddddddddddddddddddddddd"}
+      ],
+      "state_snapshot": {"writer": "runner", "bytes_written": 128}
+    }
+  ]
+}

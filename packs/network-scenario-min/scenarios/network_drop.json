@@ -1,0 +1,10 @@
+{
+  "scenario": "network_drop",
+  "description": "User retries after a transient disconnect.",
+  "steps": [
+    {"actor": "bot", "message": "Streaming data..."},
+    {"actor": "system", "message": "Network interruption"},
+    {"actor": "user", "message": "retry"},
+    {"actor": "bot", "message": "Connection restored."}
+  ]
+}

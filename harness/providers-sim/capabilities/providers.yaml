@@ -1,0 +1,25 @@
+reference_provider: messaging-primary
+simulator_provider: simulator
+
+description: |
+  Capability map declaring what the real messaging provider supports versus the simulator.
+  Any capability missing in the simulator must be explicitly documented under `downgrades`.
+
+providers:
+  messaging-primary:
+    capabilities:
+      - send_message
+      - buttons
+      - adaptive_cards
+      - streaming
+      - effect_log
+  simulator:
+    capabilities:
+      - send_message
+      - buttons
+      - adaptive_cards
+      - effect_log
+
+downgrades:
+  - capability: streaming
+    reason: Deterministic simulator response stream runs synchronously, so streaming is disabled.

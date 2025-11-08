@@ -1,0 +1,29 @@
+{
+  "name": "dev bootstrap basic tenants",
+  "runs": [
+    {
+      "tenant_id": "tenant-alpha",
+      "session_id": "session-001",
+      "events": [
+        {"sequence": 1, "kind": "session_start", "tenant_id": "tenant-alpha"},
+        {"sequence": 2, "kind": "bot_message", "tenant_id": "tenant-alpha"},
+        {"sequence": 3, "kind": "user_message", "tenant_id": "tenant-alpha"},
+        {"sequence": 4, "kind": "state_write", "tenant_id": "tenant-alpha", "trace_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}
+      ],
+      "state_snapshot": {"writer": "runner", "bytes_written": 256}
+    },
+    {
+      "tenant_id": "tenant-beta",
+      "session_id": "session-777",
+      "events": [
+        {"sequence": 1, "kind": "session_start", "tenant_id": "tenant-beta"},
+        {"sequence": 2, "kind": "bot_message", "tenant_id": "tenant-beta"},
+        {"sequence": 3, "kind": "system_notice", "tenant_id": "tenant-beta"},
+        {"sequence": 4, "kind": "bot_message", "tenant_id": "tenant-beta"},
+        {"sequence": 5, "kind": "user_message", "tenant_id": "tenant-beta"},
+        {"sequence": 6, "kind": "state_write", "tenant_id": "tenant-beta", "trace_id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"}
+      ],
+      "state_snapshot": {"writer": "runner", "bytes_written": 512}
+    }
+  ]
+}

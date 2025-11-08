@@ -1,0 +1,15 @@
+{
+  "id": "adaptive-basic",
+  "name": "Adaptive Dialog (Basic)",
+  "version": "0.1.0",
+  "description": "Baseline adaptive dialog scenario covering slot filling.",
+  "type": "adaptive",
+  "scenarios": [
+    {
+      "id": "basic_adaptive",
+      "entry": "scenarios/basic_adaptive.json",
+      "golden": "golden/basic_adaptive.json",
+      "tags": ["adaptive", "slot-filling"]
+    }
+  ]
+}

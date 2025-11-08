@@ -1,0 +1,10 @@
+{
+  "scenario_id": "basic_adaptive",
+  "transcript": [
+    "BOT: Hi! What's your name?",
+    "USER: Avery",
+    "BOT: Nice to meet you Avery. Do you prefer SMS or email?",
+    "USER: email",
+    "BOT: Cool, I'll send updates via email."
+  ]
+}

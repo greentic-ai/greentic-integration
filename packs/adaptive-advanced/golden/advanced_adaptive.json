@@ -1,0 +1,10 @@
+{
+  "scenario_id": "advanced_adaptive",
+  "transcript": [
+    "BOT: Checking provider capabilities.",
+    "SYSTEM: Primary provider unavailable",
+    "BOT: Falling back to simulator.",
+    "USER: confirm",
+    "BOT: Fallback confirmed."
+  ]
+}

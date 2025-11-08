@@ -1,0 +1,15 @@
+{
+  "id": "demo-menu",
+  "name": "Demo Menu Pack",
+  "version": "0.1.0",
+  "description": "Starter menu flow that exercises button prompts and simple branching.",
+  "type": "menu",
+  "scenarios": [
+    {
+      "id": "welcome_menu",
+      "entry": "scenarios/welcome_menu.json",
+      "golden": "golden/welcome_menu.json",
+      "tags": ["menu", "happy-path"]
+    }
+  ]
+}

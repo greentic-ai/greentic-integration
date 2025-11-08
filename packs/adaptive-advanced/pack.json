@@ -1,0 +1,15 @@
+{
+  "id": "adaptive-advanced",
+  "name": "Adaptive Dialog (Advanced)",
+  "version": "0.1.0",
+  "description": "Covers conditional branches and provider fallbacks.",
+  "type": "adaptive",
+  "scenarios": [
+    {
+      "id": "advanced_adaptive",
+      "entry": "scenarios/advanced_adaptive.json",
+      "golden": "golden/advanced_adaptive.json",
+      "tags": ["adaptive", "branching", "fallback"]
+    }
+  ]
+}

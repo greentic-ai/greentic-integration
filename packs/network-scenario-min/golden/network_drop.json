@@ -1,0 +1,9 @@
+{
+  "scenario_id": "network_drop",
+  "transcript": [
+    "BOT: Streaming data...",
+    "SYSTEM: Network interruption",
+    "USER: retry",
+    "BOT: Connection restored."
+  ]
+}

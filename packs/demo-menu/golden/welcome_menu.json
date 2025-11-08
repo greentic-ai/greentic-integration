@@ -1,0 +1,9 @@
+{
+  "scenario_id": "welcome_menu",
+  "transcript": [
+    "BOT: Welcome to Greentic.",
+    "BOT: Choose an option: [About, Contact]",
+    "USER: About",
+    "BOT: Greentic is building adaptive demos."
+  ]
+}
