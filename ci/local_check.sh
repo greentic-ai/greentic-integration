@@ -15,9 +15,17 @@ run_step() {
   "$@"
 }
 
-run_step "cargo fmt" cargo fmt -- --check
-run_step "cargo clippy" cargo clippy --all-targets --all-features -- -D warnings
-run_step "cargo test" cargo test --workspace
+TOOLCHAIN="${RUST_TOOLCHAIN:-stable}"
+if ! rustup toolchain list | grep -q "${TOOLCHAIN}"; then
+  log "error: rustup toolchain '${TOOLCHAIN}' not installed. Run 'rustup toolchain install ${TOOLCHAIN} --profile minimal --component clippy --component rustfmt'."
+  exit 1
+fi
+
+CARGO_CMD=(cargo "+${TOOLCHAIN}")
+
+run_step "cargo fmt" "${CARGO_CMD[@]}" fmt -- --check
+run_step "cargo clippy" "${CARGO_CMD[@]}" clippy --all-targets --all-features -- -D warnings
+run_step "cargo test" "${CARGO_CMD[@]}" test --workspace
 run_step "make packs.test" make packs.test
 run_step "make render.snapshot" make render.snapshot
 run_step "make runner.smoke" make runner.smoke

@@ -1154,12 +1154,11 @@ fn resolve_default_config_path() -> Option<Utf8PathBuf> {
         return Some(repo_relative);
     }
 
-    if let Some(dirs) = ProjectDirs::from("ai", "Greentic", APP_NAME) {
-        if let Ok(path) = Utf8PathBuf::from_path_buf(dirs.config_dir().join("config.toml")) {
-            if path.exists() {
-                return Some(path);
-            }
-        }
+    if let Some(dirs) = ProjectDirs::from("ai", "Greentic", APP_NAME)
+        && let Ok(path) = Utf8PathBuf::from_path_buf(dirs.config_dir().join("config.toml"))
+        && path.exists()
+    {
+        return Some(path);
     }
 
     None
