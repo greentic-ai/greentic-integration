@@ -64,10 +64,7 @@ fn parse_args() -> PathBuf {
             PathBuf::from(path)
         }
         Some(other) => {
-            eprintln!(
-                "Unexpected argument '{}'. Usage: runner-smoke [--cases <dir>]",
-                other
-            );
+            eprintln!("Unexpected argument '{other}'. Usage: runner-smoke [--cases <dir>]");
             std::process::exit(2);
         }
         None => PathBuf::from("harness/runner-smoke/cases"),

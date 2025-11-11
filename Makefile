@@ -7,7 +7,7 @@ LOG_DIR := .logs
 COMPOSE ?= docker compose
 STACK_FILE := compose/stack.yml
 
-.PHONY: help stack-up stack-down packs.test runner.smoke render.snapshot webchat.e2e dev.min dev.full webchat.contract golden.update
+.PHONY: help stack-up stack-down packs.test runner.smoke render.snapshot webchat.e2e dev.min dev.full webchat.contract golden.update app.test
 
 help: ## Show available commands
 	@printf "\nGreentic Integration Make targets\n\n"
@@ -26,6 +26,9 @@ packs.test: ## Validate pack fixtures (PR-INT-04)
 
 runner.smoke: ## Run runner smoke tests (PR-INT-06)
 	@cargo run -p runner-smoke -- --cases harness/runner-smoke/cases
+
+app.test: ## Run app crate unit tests (session/resume/runner stubs)
+	@cargo test -p greentic-integration
 
 render.snapshot: ## Capture renderer snapshots (PR-INT-05)
 	@cargo test -p providers-sim -- render_reports_match_golden

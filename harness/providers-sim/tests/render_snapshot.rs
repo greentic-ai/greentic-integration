@@ -39,7 +39,7 @@ fn render_reports_match_golden() {
     if env::var("UPDATE_GOLDEN").as_deref() == Ok("1") {
         let json = serde_json::to_string_pretty(&reports).expect("serialize reports");
         fs::create_dir_all(golden_path.parent().unwrap()).expect("create golden dir");
-        fs::write(&golden_path, format!("{}\n", json)).expect("write golden");
+        fs::write(&golden_path, format!("{json}\n")).expect("write golden");
     }
 
     let expected: Vec<RenderReport> =
