@@ -859,6 +859,7 @@ dependencies = [
  "clap",
  "directories",
  "figment",
+ "greentic-types",
  "notify",
  "once_cell",
  "parking_lot",
