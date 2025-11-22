@@ -1,0 +1,29 @@
+{
+  "id": "deploy-generic",
+  "name": "Generic Deployment Pack",
+  "version": "0.1.0",
+  "kind": "deployment",
+  "description": "Demonstrates a deployment flow that consumes DeploymentPlan and writes plan.json.",
+  "type": "deployment",
+  "scenarios": [
+    {
+      "id": "deploy_plan_written",
+      "entry": "scenarios/deploy_plan_written.json",
+      "golden": "golden/deploy_plan_written.json",
+      "tags": ["deployment", "iac"]
+    }
+  ],
+  "components": [
+    {
+      "id": "greentic.deploy.generic.iac",
+      "version": "1.0.0",
+      "path": "components/deploy_plan_component.wasm"
+    }
+  ],
+  "flows": [
+    {
+      "id": "deploy_generic_iac",
+      "file": "flows/deploy_generic_iac.ygtc"
+    }
+  ]
+}

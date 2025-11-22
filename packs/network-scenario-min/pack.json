@@ -2,6 +2,7 @@
   "id": "network-scenario-min",
   "name": "Network Scenario (Minimal)",
   "version": "0.1.0",
+  "kind": "application",
   "description": "Exercises retry logic for flaky networking paths.",
   "type": "network",
   "scenarios": [

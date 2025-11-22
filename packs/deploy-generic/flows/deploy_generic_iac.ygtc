@@ -1,0 +1,16 @@
+type: events
+id: deploy_generic_iac
+description: Render a deployment plan to /iac/plan.json
+
+nodes:
+  render:
+    deploy.renderer:
+      component: greentic.deploy.generic.iac
+      profile: iac-generator
+      config: {}
+      routing:
+        default: done
+
+  done:
+    noop:
+      config: {}

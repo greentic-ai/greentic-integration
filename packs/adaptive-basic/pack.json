@@ -2,6 +2,7 @@
   "id": "adaptive-basic",
   "name": "Adaptive Dialog (Basic)",
   "version": "0.1.0",
+  "kind": "application",
   "description": "Baseline adaptive dialog scenario covering slot filling.",
   "type": "adaptive",
   "scenarios": [

@@ -2,6 +2,7 @@
   "id": "demo-menu",
   "name": "Demo Menu Pack",
   "version": "0.1.0",
+  "kind": "application",
   "description": "Starter menu flow that exercises button prompts and simple branching.",
   "type": "menu",
   "scenarios": [

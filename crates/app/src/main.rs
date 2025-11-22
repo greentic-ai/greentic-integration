@@ -1,3 +1,4 @@
+mod deployment;
 mod session;
 
 use std::{fs, net::SocketAddr, process::Command as ProcessCommand, sync::Arc};
@@ -19,6 +20,7 @@ use figment::{
 use notify::{Event, RecommendedWatcher, RecursiveMode, Watcher, recommended_watcher};
 use once_cell::sync::Lazy;
 use parking_lot::RwLock;
+use semver::Version;
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 use std::time::Duration;
@@ -26,6 +28,9 @@ use tokio::{net::TcpListener, signal, sync::mpsc, task::JoinSet, time::sleep};
 use tracing::{error, info, warn};
 use uuid::Uuid;
 
+use crate::deployment::{
+    ChannelPlan, DeploymentPlan, MessagingPlan, MessagingSubjectPlan, RunnerPlan, TelemetryPlan,
+};
 use crate::session::{
     FileSessionStore, InMemorySessionStore, SessionFilter, SessionRecord, SessionStore,
     SessionUpsert,
@@ -84,6 +89,8 @@ enum PacksCommand {
     List(PackListArgs),
     /// Rebuild the pack index locally or via HTTP
     Reload(ReloadArgs),
+    /// Infer a base deployment plan for a pack and print it
+    Plan(PlanArgs),
 }
 
 #[derive(Args, Debug, Default)]
@@ -114,6 +121,22 @@ struct SessionPurgeArgs {
     team: Option<String>,
     #[arg(long)]
     user: Option<String>,
+}
+
+#[derive(Args, Debug)]
+struct PlanArgs {
+    /// Environment name to stamp on the plan
+    #[arg(long, default_value = "dev")]
+    environment: String,
+    /// Tenant to use (defaults to config defaults)
+    #[arg(long)]
+    tenant: Option<String>,
+    /// Pack id to resolve from the pack index
+    #[arg(long)]
+    pack_id: Option<String>,
+    /// Pretty-print JSON output
+    #[arg(long, default_value_t = false)]
+    pretty: bool,
 }
 
 #[derive(Args, Debug)]
@@ -265,7 +288,37 @@ struct PackIndex {
 struct PackEntry {
     id: String,
     name: Option<String>,
+    kind: Option<String>,
     path: Utf8PathBuf,
+}
+
+#[derive(Debug, Deserialize)]
+struct PackManifestStub {
+    id: String,
+    version: String,
+    #[serde(default)]
+    name: Option<String>,
+    #[serde(default)]
+    kind: Option<String>,
+    #[serde(default)]
+    #[allow(dead_code)]
+    description: Option<String>,
+    #[serde(default)]
+    r#type: Option<String>,
+    #[serde(default)]
+    scenarios: Vec<ScenarioStub>,
+}
+
+#[derive(Debug, Deserialize)]
+#[allow(dead_code)]
+struct ScenarioStub {
+    id: String,
+    #[serde(default)]
+    entry: Option<String>,
+    #[serde(default)]
+    golden: Option<String>,
+    #[serde(default)]
+    tags: Vec<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -390,6 +443,8 @@ struct PackListResponse {
 struct PackInfo {
     id: String,
     name: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    kind: Option<String>,
     path: String,
 }
 
@@ -538,6 +593,7 @@ fn handle_packs(cmd: PacksCommand) -> Result<()> {
         PacksCommand::Validate => run_pack_validator()?,
         PacksCommand::List(args) => list_packs(args)?,
         PacksCommand::Reload(args) => reload_packs_cli(args)?,
+        PacksCommand::Plan(args) => plan_pack(args)?,
     }
 
     Ok(())
@@ -600,7 +656,8 @@ fn resume_session_cli(args: SessionResumeArgs) -> Result<()> {
         .send_json(serde_json::Value::Object(body))
         .map_err(|err| anyhow!("failed to POST {url}: {err}"))?;
     let event: RunnerEvent = resp
-        .into_json()
+        .into_body()
+        .read_json()
         .map_err(|err| anyhow!("invalid resume response: {err}"))?;
     println!(
         "Resumed flow {} for tenant={:?} user={:?}; result={}",
@@ -630,7 +687,8 @@ fn list_sessions_cli(args: SessionListArgs) -> Result<()> {
         .call()
         .map_err(|err| anyhow!("failed to GET {url}: {err}"))?;
     let data: SessionListResponse = resp
-        .into_json()
+        .into_body()
+        .read_json()
         .map_err(|err| anyhow!("invalid session list response: {err}"))?;
     println!("{} session(s):", data.count);
     for session in data.sessions {
@@ -776,6 +834,10 @@ fn build_pack_index(config: &PackConfig) -> Result<PackIndex> {
             .get("name")
             .and_then(|v| v.as_str())
             .map(|s| s.to_string());
+        let kind = manifest
+            .get("kind")
+            .and_then(|v| v.as_str())
+            .map(|s| s.to_string());
         let pack_path = match Utf8PathBuf::from_path_buf(path.clone()) {
             Ok(p) => p,
             Err(_) => Utf8PathBuf::from(path.to_string_lossy().to_string()),
@@ -783,11 +845,88 @@ fn build_pack_index(config: &PackConfig) -> Result<PackIndex> {
         entries.push(PackEntry {
             id,
             name,
+            kind,
             path: pack_path,
         });
     }
 
     Ok(PackIndex { entries })
+}
+
+fn infer_base_deployment_plan(
+    entry: &PackEntry,
+    tenant: String,
+    environment: String,
+) -> Result<DeploymentPlan> {
+    let manifest_path = entry.path.join("pack.json");
+    let raw = fs::read_to_string(&manifest_path)
+        .with_context(|| format!("failed to read {manifest_path}"))?;
+    let manifest: PackManifestStub = serde_json::from_str(&raw)
+        .with_context(|| format!("invalid pack manifest {manifest_path}"))?;
+
+    let pack_version = Version::parse(&manifest.version)
+        .with_context(|| format!("invalid semver version in {manifest_path}"))?;
+
+    let channels = manifest
+        .scenarios
+        .iter()
+        .map(|scenario| ChannelPlan {
+            name: scenario.id.clone(),
+            flow_id: scenario.id.clone(),
+            kind: manifest.r#type.as_deref().unwrap_or("scenario").to_string(),
+            config: Value::Null,
+        })
+        .collect();
+
+    let extra = json!({
+        "pack_name": manifest.name,
+        "pack_kind": manifest.kind,
+    });
+
+    let subjects: Vec<MessagingSubjectPlan> = manifest
+        .scenarios
+        .iter()
+        .map(|scenario| MessagingSubjectPlan {
+            name: scenario.id.clone(),
+            purpose: manifest.r#type.as_deref().unwrap_or("scenario").to_string(),
+            durable: true,
+            extra: Value::Null,
+        })
+        .collect();
+
+    let messaging = (!subjects.is_empty()).then(|| MessagingPlan {
+        logical_cluster: "default".into(),
+        subjects,
+        extra: Value::Null,
+    });
+
+    let telemetry_required = manifest
+        .kind
+        .as_deref()
+        .map(|k| k.eq_ignore_ascii_case("deployment"))
+        .unwrap_or(false);
+
+    Ok(DeploymentPlan {
+        pack_id: manifest.id,
+        pack_version,
+        tenant,
+        environment,
+        runners: vec![RunnerPlan {
+            name: format!("{}-runner", entry.id),
+            replicas: 1,
+            capabilities: Value::Null,
+        }],
+        messaging,
+        channels,
+        secrets: Vec::new(),
+        oauth: Vec::new(),
+        telemetry: Some(TelemetryPlan {
+            required: telemetry_required,
+            suggested_endpoint: None,
+            extra: Value::Null,
+        }),
+        extra,
+    })
 }
 
 fn run_pack_validator() -> Result<()> {
@@ -837,8 +976,9 @@ fn list_packs(args: PackListArgs) -> Result<()> {
 
     println!("Discovered {} pack(s):", resolved.len());
     for entry in resolved {
+        let kind = entry.kind.as_deref().unwrap_or("unknown");
         println!(
-            "- {} ({}) @ {}",
+            "- {} ({}) [{kind}] @ {}",
             entry.id,
             entry.name.as_deref().unwrap_or("unnamed"),
             entry.path
@@ -847,14 +987,52 @@ fn list_packs(args: PackListArgs) -> Result<()> {
     Ok(())
 }
 
+fn plan_pack(args: PlanArgs) -> Result<()> {
+    let config = load_config(None)?;
+    let index = build_pack_index(&config.packs)?;
+    let tenant = args
+        .tenant
+        .or_else(|| config.defaults.tenant.clone())
+        .unwrap_or_else(|| "dev".to_string());
+    let team = config.defaults.team.as_deref();
+    let (resolved, _, _) = index.resolve_for(Some(&tenant), team, None);
+    if resolved.is_empty() {
+        bail!(
+            "no packs found under {} (consider adjusting [packs].root or tenant defaults)",
+            config.packs.root
+        );
+    }
+    let entry = if let Some(pack_id) = args.pack_id.as_deref() {
+        resolved
+            .into_iter()
+            .find(|p| p.id == pack_id)
+            .ok_or_else(|| anyhow!("pack id {pack_id} not found in index"))?
+    } else {
+        resolved
+            .first()
+            .cloned()
+            .ok_or_else(|| anyhow!("no pack resolved"))?
+    };
+
+    let plan = infer_base_deployment_plan(&entry, tenant, args.environment)?;
+    let json = if args.pretty {
+        serde_json::to_string_pretty(&plan)?
+    } else {
+        serde_json::to_string(&plan)?
+    };
+    println!("{json}");
+    Ok(())
+}
+
 fn reload_packs_cli(args: ReloadArgs) -> Result<()> {
     if let Some(server) = args.server {
         let url = format!("{}/packs/reload", server.trim_end_matches('/'));
         let resp = ureq::post(&url)
-            .call()
+            .send_empty()
             .map_err(|err| anyhow!("HTTP reload failed: {err}"))?;
         let body: serde_json::Value = resp
-            .into_json()
+            .into_body()
+            .read_json()
             .map_err(|err| anyhow!("failed to parse /packs/reload response: {err}"))?;
         println!("Server reload succeeded: {body}");
         return Ok(());
@@ -965,6 +1143,7 @@ fn list_packs_filtered(
         .map(|entry| PackInfo {
             id: entry.id.clone(),
             name: entry.name.clone(),
+            kind: entry.kind.clone(),
             path: entry.path.to_string(),
         })
         .collect::<Vec<_>>();
@@ -1351,7 +1530,8 @@ fn runner_emit_cli(args: RunnerEmitArgs) -> Result<()> {
             .send_json(serde_json::Value::Object(body))
             .map_err(|err| anyhow!("failed to POST {url}: {err}"))?;
         let event: RunnerEvent = resp
-            .into_json()
+            .into_body()
+            .read_json()
             .map_err(|err| anyhow!("invalid runner emit response: {err}"))?;
         println!(
             "Server runner emit result -> tenant={:?} team={:?} user={:?} result={}",
@@ -1377,7 +1557,8 @@ fn runner_events_cli(args: RunnerEventsArgs) -> Result<()> {
         .call()
         .map_err(|err| anyhow!("failed to GET {url}: {err}"))?;
     let events: Vec<RunnerEvent> = resp
-        .into_json()
+        .into_body()
+        .read_json()
         .map_err(|err| anyhow!("invalid runner events response: {err}"))?;
     if events.is_empty() {
         println!("No runner events recorded.");
@@ -1451,6 +1632,7 @@ fn now_millis() -> u64 {
 #[cfg(test)]
 mod app_tests {
     use super::*;
+    use crate::deployment::PackKind;
     use axum::{
         Extension,
         body::{self, Body},
@@ -1602,6 +1784,58 @@ mod app_tests {
             pack_index,
             runner_events,
         }
+    }
+
+    #[test]
+    fn pack_kind_round_trip() {
+        let json = r#""deployment""#;
+        let parsed: PackKind = serde_json::from_str(json).expect("parse pack kind");
+        assert!(matches!(parsed, PackKind::Deployment));
+        let serialized = serde_json::to_string(&parsed).expect("serialize pack kind");
+        assert_eq!(serialized, json);
+    }
+
+    #[test]
+    fn infer_base_plan_from_pack_manifest() {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let pack_dir = tmp.path().join("demo-pack");
+        fs::create_dir_all(&pack_dir).expect("create pack dir");
+        let manifest = r#"
+        {
+            "id": "demo",
+            "name": "Demo Pack",
+            "version": "0.1.0",
+            "kind": "deployment",
+            "type": "events",
+            "scenarios": [
+                { "id": "flow_a" },
+                { "id": "flow_b" }
+            ]
+        }
+        "#;
+        fs::write(pack_dir.join("pack.json"), manifest).expect("write manifest");
+
+        let entry = PackEntry {
+            id: "demo".to_string(),
+            name: Some("Demo Pack".to_string()),
+            kind: Some("deployment".to_string()),
+            path: Utf8PathBuf::from_path_buf(pack_dir.clone()).expect("utf8 path"),
+        };
+
+        let plan = infer_base_deployment_plan(&entry, "tenant-1".into(), "staging".into())
+            .expect("infer plan");
+        assert_eq!(plan.pack_id, "demo");
+        assert_eq!(plan.pack_version, Version::parse("0.1.0").unwrap());
+        assert_eq!(plan.tenant, "tenant-1");
+        assert_eq!(plan.environment, "staging");
+        assert_eq!(plan.runners.len(), 1);
+        assert_eq!(plan.runners[0].name, "demo-runner");
+        assert_eq!(plan.channels.len(), 2);
+        assert_eq!(plan.channels[0].flow_id, "flow_a");
+        assert_eq!(plan.channels[0].kind, "events");
+        assert!(plan.messaging.is_some());
+        assert_eq!(plan.messaging.as_ref().unwrap().subjects.len(), 2);
+        assert!(plan.telemetry.as_ref().unwrap().required);
     }
 }
 #[derive(Args, Debug, Default)]

@@ -14,6 +14,10 @@ Fixtures currently bundled:
 2. `network-scenario-min` – Minimal network retry/reconnect flow.
 3. `adaptive-basic` – Slot-filling adaptive dialog.
 4. `adaptive-advanced` – Branching adaptive dialog with provider fallback.
+5. `deploy-generic` – Deployment pack that consumes a DeploymentPlan and writes IaC output.
+
+All pack manifests now include an optional `kind` hint (application/deployment/mixed) to
+mirror the shared Greentic pack spec. These fixtures use `application`.
 
 The validation target (`make packs.test`) ensures manifests stay well-formed and that every
 scenario references an existing golden snapshot. When the real `greentic-dev` and

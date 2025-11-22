@@ -13,6 +13,7 @@
 greentic-integration serve --config config/dev.toml
 greentic-integration packs validate --packs packs/*
 greentic-integration packs list --tenant acme --team ops --user user-123
+greentic-integration packs plan --environment staging --pack-id demo-menu --pretty
 greentic-integration sessions purge --tenant acme --user user-123
 ```
 
@@ -38,13 +39,22 @@ validation logic close to the CLI so developers do not need parallel tooling.
 Prints the pack ID/name/path discovered under `[packs].root`. Accepts optional
 `tenant`, `team`, and `user` flags to mirror the runner lookup hierarchy (from
 tenant:team:user down to tenant). The command also prints which override keys
-resolved (and which were missing) so you can debug fallback behavior.
+resolved (and which were missing) so you can debug fallback behavior. Manifests can
+optionally declare a `kind` (“application”, “deployment”, or “mixed”); when present, the
+CLI includes it in the listing to mirror the shared Greentic pack hint.
 
 ### `packs reload`
 `greentic-integration packs reload --server http://localhost:8080` POSTs to
 `/packs/reload` so a running server refreshes its pack index immediately. When
 `--server` is omitted, the command performs a local rebuild for inspection and
 prints the resulting packs (useful before triggering the real server reload).
+
+### `packs plan`
+Builds a provider-agnostic `DeploymentPlan` from a pack manifest plus tenant/environment
+inputs and prints JSON (pretty with `--pretty`). It currently infers a single runner, uses
+scenario IDs as channel/flow identifiers (including deployment demo scenarios), and carries
+through `kind`/`name` into `extra`.
+This mirrors the generic deployment plan spec without introducing provider semantics.
 
 ### `sessions purge`
 Used by end-to-end tests to guarantee a clean slate. Accepts tenant/team/user

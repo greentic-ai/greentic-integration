@@ -27,6 +27,15 @@
     "transcript_hash": "62fa4129b35789b47d690f2df2c8d8b198306a2f1ae04a51925410851411552d"
   },
   {
+    "pack_id": "deploy-generic",
+    "scenario_id": "deploy_plan_written",
+    "message_count": 3,
+    "bot_messages": 2,
+    "user_messages": 0,
+    "system_messages": 1,
+    "transcript_hash": "585a4d549e8fd54284a9d85cddeed4cb15a2d99419488928d5bf57161d64b195"
+  },
+  {
     "pack_id": "network-scenario-min",
     "scenario_id": "network_drop",
     "message_count": 4,

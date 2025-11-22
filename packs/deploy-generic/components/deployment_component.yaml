@@ -1,0 +1,33 @@
+id: greentic.deploy.generic.iac
+version: 1.0.0
+kind: deployment-example
+supports:
+  - events
+world: "greentic:deploy-plan@1.0.0"
+profiles:
+  default: iac-generator
+  supported:
+    - iac-generator
+capabilities:
+  wasi:
+    filesystem:
+      mode: sandboxed
+      mounts:
+        - name: iac-out
+          host_class: iac_out
+          guest_path: /iac
+    random: true
+    clocks: true
+  host:
+    secrets:
+      required: []
+    http:
+      client: false
+      server: false
+    telemetry:
+      scope: tenant
+    iac:
+      write_templates: true
+      execute_plans: false
+configurators:
+  basic: configure_greentic_deploy_generic_iac_basic

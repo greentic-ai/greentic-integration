@@ -2,6 +2,7 @@
   "id": "adaptive-advanced",
   "name": "Adaptive Dialog (Advanced)",
   "version": "0.1.0",
+  "kind": "application",
   "description": "Covers conditional branches and provider fallbacks.",
   "type": "adaptive",
   "scenarios": [

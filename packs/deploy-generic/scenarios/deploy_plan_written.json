@@ -1,0 +1,9 @@
+{
+  "scenario": "deploy_plan_written",
+  "description": "Deployment component renders plan.json using a provided DeploymentPlan.",
+  "steps": [
+    {"actor": "bot", "message": "Preparing deployment plan."},
+    {"actor": "system", "message": "Deployment plan available at /iac/plan.json"},
+    {"actor": "bot", "message": "Deployment complete."}
+  ]
+}

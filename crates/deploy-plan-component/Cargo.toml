@@ -1,0 +1,15 @@
+[package]
+name = "deploy-plan-component"
+version.workspace = true
+edition = "2024"
+publish = false
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+serde_json.workspace = true
+greentic-interfaces-guest = { version = "0.4.34", path = "../../../greentic-interfaces/crates/greentic-interfaces-guest", default-features = false }
+
+[dev-dependencies]
+tempfile.workspace = true

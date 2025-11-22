@@ -44,6 +44,8 @@ struct PackManifest {
     version: Option<String>,
     #[serde(default)]
     r#type: Option<String>,
+    #[serde(default)]
+    kind: Option<String>,
     scenarios: Vec<ScenarioEntry>,
 }
 

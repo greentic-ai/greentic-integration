@@ -1,0 +1,8 @@
+{
+  "scenario_id": "deploy_plan_written",
+  "transcript": [
+    "BOT: Preparing deployment plan.",
+    "SYSTEM: Deployment plan available at /iac/plan.json",
+    "BOT: Deployment complete."
+  ]
+}
