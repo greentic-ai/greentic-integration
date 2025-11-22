@@ -1,7 +1,7 @@
 [package]
 name = "greentic-integration"
 version.workspace = true
-edition = "2024"
+edition.workspace = true
 
 [dependencies]
 anyhow.workspace = true

@@ -583,7 +583,7 @@ dependencies = [
 
 [[package]]
 name = "deploy-plan-component"
-version = "0.4.1"
+version = "0.4.2"
 dependencies = [
  "greentic-interfaces-guest",
  "serde_json",
@@ -851,7 +851,7 @@ dependencies = [
 
 [[package]]
 name = "greentic-integration"
-version = "0.4.1"
+version = "0.4.2"
 dependencies = [
  "anyhow",
  "axum",
@@ -880,6 +880,8 @@ dependencies = [
 [[package]]
 name = "greentic-interfaces"
 version = "0.4.34"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5d93e45b63d16abbc347e1bb01580daae9245aff20e702f53028672c224c76aa"
 dependencies = [
  "anyhow",
  "greentic-types",
@@ -895,6 +897,8 @@ dependencies = [
 [[package]]
 name = "greentic-interfaces-guest"
 version = "0.4.34"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "77f00eadfa14e5d0940f78e96ded590720f429b16017738ff2996f5d79010a1b"
 dependencies = [
  "greentic-interfaces",
  "greentic-types",
@@ -1617,7 +1621,7 @@ dependencies = [
 
 [[package]]
 name = "providers-sim"
-version = "0.4.1"
+version = "0.4.2"
 dependencies = [
  "hex",
  "serde",
@@ -1752,7 +1756,7 @@ dependencies = [
 
 [[package]]
 name = "runner-smoke"
-version = "0.4.1"
+version = "0.4.2"
 dependencies = [
  "anyhow",
  "serde",

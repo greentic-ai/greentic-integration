@@ -32,8 +32,8 @@ tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
 ureq = { version = "3", features = ["json"] }
 uuid = { version = "1", features = ["v4", "serde"] }
 walkdir = "2"
-wit-bindgen = { version = "0.47", default-features = false, features = ["macros", "realloc"] }
 tempfile = "3"
+greentic-interfaces-guest = { version = "0.4", default-features = false }
 [workspace.package]
 edition = "2024"
-version = "0.4.1"
+version = "0.4.2"
