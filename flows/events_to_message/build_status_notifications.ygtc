@@ -1,0 +1,34 @@
+type: events
+id: build_status_notifications
+description: |
+  Convert repo build status events into channel messages using local demo providers.
+
+nodes:
+  event_ingress:
+    events.source:
+      provider: local-events
+      topic: greentic.repo.build.status
+      routing:
+        default: bridge_to_message
+
+  bridge_to_message:
+    events.bridge.message_to_channel:
+      component: demo.bridge.events_to_message
+      profile: default
+      config:
+        template: build-status
+      routing:
+        default: send_message
+
+  send_message:
+    messaging.send:
+      provider: local-messaging
+      channel: build-notifications
+      config:
+        delivery: broadcast
+      routing:
+        default: done
+
+  done:
+    noop:
+      config: {}

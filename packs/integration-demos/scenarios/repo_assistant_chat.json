@@ -1,0 +1,16 @@
+{
+  "scenario": "repo_assistant_chat",
+  "description": "User asks the Repo Assistant a question; optional rebuild branch emits an event.",
+  "steps": [
+    {"actor": "user", "message": "Show last build status"},
+    {
+      "actor": "bot",
+      "message": "Last build succeeded for my-service @1a2b3c (duration: 6m15s)."
+    },
+    {"actor": "user", "message": "Please rebuild"},
+    {
+      "actor": "bot",
+      "message": "Rebuild requested; emitting event greentic.repo.build.request with payload {repo: my-service, commit: main}"
+    }
+  ]
+}

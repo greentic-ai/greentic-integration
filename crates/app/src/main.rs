@@ -1768,6 +1768,97 @@ mod app_tests {
         assert_eq!(resp.status(), StatusCode::OK);
     }
 
+    #[tokio::test]
+    async fn runner_emit_and_list_returns_echoed_result() {
+        let state = test_state();
+        let app = build_router(state.clone());
+        let payload = json!({"hello": "world", "count": 42});
+        let req = RunnerEmitRequest {
+            flow: "flow-integration".into(),
+            tenant: Some("dev".into()),
+            team: Some("team-a".into()),
+            user: Some("user-x".into()),
+            payload: Some(payload.clone()),
+        };
+
+        let resp = app
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/runner/emit")
+                    .header("content-type", "application/json")
+                    .body(Body::from(serde_json::to_vec(&req).unwrap()))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(resp.status(), StatusCode::OK);
+
+        let resp = app
+            .oneshot(
+                Request::builder()
+                    .uri("/runner/events")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(resp.status(), StatusCode::OK);
+        let body = body::to_bytes(resp.into_body(), usize::MAX).await.unwrap();
+        let events: Vec<RunnerEvent> = serde_json::from_slice(&body).unwrap();
+        assert_eq!(events.len(), 1);
+        let ev = &events[0];
+        assert_eq!(ev.flow, "flow-integration");
+        assert_eq!(ev.tenant.as_deref(), Some("dev"));
+        assert_eq!(ev.team.as_deref(), Some("team-a"));
+        assert_eq!(ev.user.as_deref(), Some("user-x"));
+        assert_eq!(ev.payload, payload);
+        assert_eq!(ev.result["status"], "ok");
+        assert_eq!(ev.result["echo"], payload);
+    }
+
+    #[tokio::test]
+    async fn runner_events_can_be_cleared() {
+        let state = test_state();
+        let app = build_router(state.clone());
+        let req = RunnerEmitRequest {
+            flow: "flow-clear".into(),
+            tenant: None,
+            team: None,
+            user: None,
+            payload: Some(json!({"foo": "bar"})),
+        };
+        let resp = app
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/runner/emit")
+                    .header("content-type", "application/json")
+                    .body(Body::from(serde_json::to_vec(&req).unwrap()))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(resp.status(), StatusCode::OK);
+        assert_eq!(state.runner_events.read().len(), 1);
+
+        let resp = app
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .method("DELETE")
+                    .uri("/runner/events")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(resp.status(), StatusCode::NO_CONTENT);
+        assert_eq!(state.runner_events.read().len(), 0);
+    }
+
     fn test_state() -> AppState {
         let config = AppConfig::default();
         let session_store = build_session_store(&config.stores.session).unwrap();

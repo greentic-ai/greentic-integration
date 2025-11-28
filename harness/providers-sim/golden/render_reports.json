@@ -36,6 +36,24 @@
     "transcript_hash": "585a4d549e8fd54284a9d85cddeed4cb15a2d99419488928d5bf57161d64b195"
   },
   {
+    "pack_id": "integration-demos",
+    "scenario_id": "build_status_notification",
+    "message_count": 3,
+    "bot_messages": 1,
+    "user_messages": 0,
+    "system_messages": 0,
+    "transcript_hash": "c0c21dfefe48bacbfc3955e33fe55e14e571edba1f7c51d57f984179579ecbdc"
+  },
+  {
+    "pack_id": "integration-demos",
+    "scenario_id": "repo_assistant_chat",
+    "message_count": 4,
+    "bot_messages": 2,
+    "user_messages": 2,
+    "system_messages": 0,
+    "transcript_hash": "1f533cd8d794d9652154025591559b62a5eb5b215ff03f0b6000020e18f6a177"
+  },
+  {
     "pack_id": "network-scenario-min",
     "scenario_id": "network_drop",
     "message_count": 4,

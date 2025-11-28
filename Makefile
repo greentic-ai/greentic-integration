@@ -51,3 +51,10 @@ dev.full: dev.min ## Full developer bootstrap (PR-INT-02)
 
 golden.update: ## Stub: Refresh golden snapshots (PR-INT-10)
 	@$(SCRIPTS_DIR)/update_golden.sh
+
+.PHONY: demo.replay.build demo.replay.chat
+demo.replay.build: ## Replay sample build-status payload via runner emit (local stub)
+	@./scripts/replay_build_status_payload.sh
+
+demo.replay.chat: ## Replay sample chat payload via runner emit (local stub)
+	@./scripts/replay_repo_assistant_payload.sh

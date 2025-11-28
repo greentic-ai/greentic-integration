@@ -1,0 +1,8 @@
+{
+  "scenario_id": "build_status_notification",
+  "transcript": [
+    "EVENT: greentic.repo.build.status {id: evt-123, repo: my-service, status: success, commit: 1a2b3c}",
+    "BRIDGE: Render channel message with repo/status/commit link",
+    "BOT: Build succeeded for my-service @1a2b3c (status: success)"
+  ]
+}

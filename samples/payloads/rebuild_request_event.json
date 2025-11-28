@@ -1,0 +1,21 @@
+{
+  "id": "evt-789",
+  "topic": "greentic.repo.build.request",
+  "type": "com.greentic.repo.build.request.v1",
+  "source": "repo-assistant-worker",
+  "tenant": {
+    "tenant_id": "dev"
+  },
+  "subject": "repo:my-service",
+  "time": "2024-02-03T04:05:06Z",
+  "correlation_id": "corr-2",
+  "payload": {
+    "repo": "my-service",
+    "commit": "main",
+    "requested_by": "user-1"
+  },
+  "metadata": {
+    "idempotency_key": "rebuild-evt-evt-789",
+    "source_message_id": "msg-456"
+  }
+}

@@ -1,0 +1,46 @@
+{
+  "id": "integration-demos",
+  "name": "Integration Demo Flows",
+  "version": "0.1.0",
+  "kind": "application",
+  "description": "Mock-first examples showing build status notifications and chat-driven Repo Assistant.",
+  "type": "application",
+  "scenarios": [
+    {
+      "id": "build_status_notification",
+      "entry": "scenarios/build_status_notification.json",
+      "golden": "golden/build_status_notification.json",
+      "tags": ["events", "messaging", "bridge"]
+    },
+    {
+      "id": "repo_assistant_chat",
+      "entry": "scenarios/repo_assistant_chat.json",
+      "golden": "golden/repo_assistant_chat.json",
+      "tags": ["messaging", "worker"]
+    }
+  ],
+  "flows": [
+    {
+      "id": "build_status_notifications",
+      "file": "../../flows/events_to_message/build_status_notifications.ygtc"
+    },
+    {
+      "id": "repo_assistant_chat",
+      "file": "../../flows/chat_driven/repo_assistant.ygtc"
+    }
+  ],
+  "components": [
+    {
+      "id": "demo.bridge.events_to_message",
+      "version": "0.0.0",
+      "path": "components/demo_bridge_events_to_message.wasm",
+      "description": "Placeholder bridge component artifact for local/demo runs."
+    },
+    {
+      "id": "demo.worker.repo_assistant",
+      "version": "0.0.0",
+      "path": "components/demo_worker_repo_assistant.wasm",
+      "description": "Placeholder worker component artifact for local/demo runs."
+    }
+  ]
+}

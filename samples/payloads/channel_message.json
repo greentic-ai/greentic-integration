@@ -1,0 +1,15 @@
+{
+  "id": "msg-456",
+  "tenant": {
+    "tenant_id": "dev"
+  },
+  "channel": "webchat",
+  "session_id": "sess-789",
+  "user_id": "user-1",
+  "text": "Build succeeded for my-service @1a2b3c (status: success)",
+  "attachments": [],
+  "metadata": {
+    "correlation_id": "corr-1",
+    "source_event_id": "evt-123"
+  }
+}

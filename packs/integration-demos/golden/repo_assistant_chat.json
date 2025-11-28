@@ -1,0 +1,9 @@
+{
+  "scenario_id": "repo_assistant_chat",
+  "transcript": [
+    "USER: Show last build status",
+    "BOT: Last build succeeded for my-service @1a2b3c (duration: 6m15s).",
+    "USER: Please rebuild",
+    "BOT: Rebuild requested; emitting event greentic.repo.build.request with payload {repo: my-service, commit: main}"
+  ]
+}

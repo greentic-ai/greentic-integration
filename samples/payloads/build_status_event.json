@@ -1,0 +1,22 @@
+{
+  "id": "evt-123",
+  "topic": "greentic.repo.build.status",
+  "type": "com.greentic.repo.build.status.v1",
+  "source": "repo-service",
+  "tenant": {
+    "tenant_id": "dev"
+  },
+  "subject": "repo:my-service",
+  "time": "2024-01-02T03:04:05Z",
+  "correlation_id": "corr-1",
+  "payload": {
+    "repo": "my-service",
+    "status": "success",
+    "commit": "1a2b3c",
+    "duration_ms": 375000
+  },
+  "metadata": {
+    "idempotency_key": "build-evt-evt-123",
+    "trace_id": "trace-abc"
+  }
+}

@@ -73,6 +73,11 @@ tenant isolation, state write expectations, and once-only effect log semantics b
 into the real Runner binary. The effect log contract lives in
 `harness/runner-smoke/effect_log.schema.json`.
 
+## Demo Payload Replays
+
+- `make demo.replay.build` / `make demo.replay.chat` replay the sample EventEnvelope/ChannelMessageEnvelope payloads through the runner emit proxy.
+- CI starts the `greentic-integration` server and runs these targets with `USE_SERVER=1` so they POST to `http://localhost:8080/runner/emit`. Locally, the make targets default to the in-process stub unless you set `USE_SERVER=1`.
+
 ## Dev Mode Check
 
 `make dev.min` now runs `scripts/dev-check/check.sh`, which verifies essential environment

@@ -1,0 +1,29 @@
+# Demo-local runner configuration for the greentic-integration example flows.
+# This file is intentionally lightweight and uses mock component identifiers.
+
+tenant: dev
+
+providers:
+  events:
+    local-events:
+      kind: broker
+      transport: memory
+      description: "In-memory events provider for demo flows."
+  messaging:
+    local-messaging:
+      kind: webchat
+      channel: webchat
+      description: "Local messaging adapter used by the chat-driven demo."
+
+bridges:
+  demo.bridge.events_to_message:
+    kind: message-to-channel
+    notes: "Stub bridge converting build status events to channel messages."
+
+workers:
+  demo.worker.repo_assistant:
+    kind: worker
+    notes: "Stub Repo Assistant worker returning canned responses."
+
+# Component artifacts for the mock IDs live under packs/integration-demos/components/.
+# Swap these ids/paths to point at real components when available.

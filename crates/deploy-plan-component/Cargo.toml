@@ -9,7 +9,7 @@ crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 serde_json.workspace = true
-greentic-interfaces-guest = { workspace=true, default-features = false }
+greentic-interfaces-guest = { workspace=true, default-features = false, features = ["component-node"] }
 
 [dev-dependencies]
 tempfile.workspace = true

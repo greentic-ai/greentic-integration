@@ -1,0 +1,44 @@
+type: messaging
+id: repo_assistant_chat
+description: |
+  Chat-driven Repo Assistant demo with optional rebuild-request event emission.
+
+nodes:
+  ingress_message:
+    messaging.ingress:
+      provider: local-messaging
+      channel: webchat
+      routing:
+        default: to_worker
+
+  to_worker:
+    worker.request:
+      component: demo.worker.repo_assistant
+      profile: interactive
+      config:
+        allow_rebuild: true
+      routing:
+        default: respond
+        rebuild_requested: emit_rebuild_event
+
+  respond:
+    messaging.send:
+      provider: local-messaging
+      channel: "{{session_id}}"
+      config:
+        delivery: reply
+      routing:
+        default: done
+
+  emit_rebuild_event:
+    events.publish:
+      provider: local-events
+      topic: greentic.repo.build.request
+      config:
+        passthrough_payload: true
+      routing:
+        default: done
+
+  done:
+    noop:
+      config: {}

@@ -1,0 +1,18 @@
+{
+  "scenario": "build_status_notification",
+  "description": "Bridge a build status event into a channel message.",
+  "steps": [
+    {
+      "actor": "event",
+      "message": "greentic.repo.build.status {id: evt-123, repo: my-service, status: success, commit: 1a2b3c}"
+    },
+    {
+      "actor": "bridge",
+      "message": "Render channel message with repo/status/commit link"
+    },
+    {
+      "actor": "bot",
+      "message": "Build succeeded for my-service @1a2b3c (status: success)"
+    }
+  ]
+}
