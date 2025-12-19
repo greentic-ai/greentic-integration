@@ -11,10 +11,10 @@ pub type MessagingSubjectPlan = greentic_types::deployment::MessagingSubjectPlan
 #[allow(dead_code)]
 pub type ChannelPlan = greentic_types::deployment::ChannelPlan;
 #[allow(dead_code)]
-pub type SecretPlan = greentic_types::deployment::SecretPlan;
-#[allow(dead_code)]
 pub type OAuthPlan = greentic_types::deployment::OAuthPlan;
 #[allow(dead_code)]
 pub type TelemetryPlan = greentic_types::deployment::TelemetryPlan;
 #[allow(dead_code)]
 pub type PackKind = greentic_types::pack_manifest::PackKind;
+#[allow(dead_code)]
+pub type SecretRequirement = greentic_types::SecretRequirement;

@@ -12,7 +12,7 @@ fn load_payload(name: &str) -> Value {
         .join("payloads")
         .join(name);
     let data = fs::read_to_string(&path)
-        .unwrap_or_else(|_| panic!("Failed to read payload file at {:?}", path));
+        .unwrap_or_else(|_| panic!("Failed to read payload file at {path:?}"));
     serde_json::from_str(&data).expect("payload JSON should parse")
 }
 

@@ -1,10 +1,12 @@
 use std::{collections::HashMap, fs, sync::Arc};
 
-use anyhow::{Context, Result};
+use anyhow::{Context, Result, anyhow};
 use camino::Utf8PathBuf;
 use parking_lot::Mutex;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+
+use crate::path_safety::normalize_under_root;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SessionUpsert {
@@ -141,10 +143,18 @@ pub struct FileSessionStore {
 }
 
 impl FileSessionStore {
-    pub fn new(path: Utf8PathBuf) -> Result<Arc<Self>> {
-        let data = Self::load_from_disk(&path).unwrap_or_default();
+    pub fn new(root: Utf8PathBuf, path: Utf8PathBuf) -> Result<Arc<Self>> {
+        let root = root
+            .as_std_path()
+            .canonicalize()
+            .with_context(|| format!("failed to canonicalize sessions root {root}"))?;
+        let safe_path = normalize_under_root(&root, path.as_std_path())?;
+        let safe_path = Utf8PathBuf::from_path_buf(safe_path)
+            .map_err(|_| anyhow!("normalized session path is not valid UTF-8"))?;
+
+        let data = Self::load_from_disk(&safe_path).unwrap_or_default();
         Ok(Arc::new(Self {
-            path,
+            path: safe_path,
             inner: Mutex::new(data),
         }))
     }
@@ -280,9 +290,8 @@ mod tests {
     #[test]
     fn file_store_persists_sessions() {
         let temp = tempdir().unwrap();
-        let path =
-            Utf8PathBuf::from_path_buf(temp.path().join("sessions.json")).expect("utf8 path");
-        let store = FileSessionStore::new(path).unwrap();
+        let root = Utf8PathBuf::from_path_buf(temp.path().to_path_buf()).expect("utf8 root");
+        let store = FileSessionStore::new(root, Utf8PathBuf::from("sessions.json")).unwrap();
 
         let record = SessionUpsert {
             key: "sess-999".into(),

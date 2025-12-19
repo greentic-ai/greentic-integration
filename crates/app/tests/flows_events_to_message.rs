@@ -42,7 +42,7 @@ fn load_flow(relative_path: &str) -> Flow {
     let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
     let flow_path = manifest_dir.join("..").join("..").join(relative_path);
     let data = fs::read_to_string(&flow_path)
-        .unwrap_or_else(|_| panic!("Failed to read flow file at {:?}", flow_path));
+        .unwrap_or_else(|_| panic!("Failed to read flow file at {flow_path:?}"));
     serde_yaml::from_str(&data).expect("flow YAML should deserialize")
 }
 

@@ -37,4 +37,4 @@ greentic-interfaces-guest = { version = "0.4", default-features = false, feature
 greentic-types = "0.4"
 [workspace.package]
 edition = "2024"
-version = "0.4.3"
+version = "0.4.4"

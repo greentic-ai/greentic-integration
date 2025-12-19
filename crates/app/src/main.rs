@@ -1,4 +1,5 @@
 mod deployment;
+mod path_safety;
 mod session;
 
 use std::{fs, net::SocketAddr, process::Command as ProcessCommand, sync::Arc};
@@ -31,6 +32,7 @@ use uuid::Uuid;
 use crate::deployment::{
     ChannelPlan, DeploymentPlan, MessagingPlan, MessagingSubjectPlan, RunnerPlan, TelemetryPlan,
 };
+use crate::path_safety::normalize_under_root;
 use crate::session::{
     FileSessionStore, InMemorySessionStore, SessionFilter, SessionRecord, SessionStore,
     SessionUpsert,
@@ -510,6 +512,7 @@ async fn main() -> Result<()> {
 
 async fn serve(args: ServeArgs) -> Result<()> {
     let config = load_config(args.config.as_ref())?;
+    let packs_root = resolve_packs_root(&config.packs)?;
     let session_store = build_session_store(&config.stores.session)?;
     let pack_index = Arc::new(RwLock::new(build_pack_index(&config.packs)?));
     let runner_events = Arc::new(RwLock::new(Vec::new()));
@@ -532,7 +535,7 @@ async fn serve(args: ServeArgs) -> Result<()> {
     );
     info!(
         packs = pack_index.read().entries.len(),
-        root = %config.packs.root,
+        root = %packs_root,
         "pack index loaded"
     );
     info!(?config, watch = args.watch, "starting integration server");
@@ -558,7 +561,7 @@ async fn serve(args: ServeArgs) -> Result<()> {
     let mut tasks = JoinSet::new();
     if args.watch {
         let watch_state = state.clone();
-        let pack_root = workspace_root().join(&config.packs.root);
+        let pack_root = packs_root.clone();
         tasks.spawn(async move {
             if let Err(err) = watch_packs(pack_root, watch_state).await {
                 warn!(?err, "pack watch failed");
@@ -709,11 +712,12 @@ fn build_session_store(config: &StoreConfig) -> Result<SharedSessionStore> {
     match config.backend {
         StoreBackend::Memory => Ok(InMemorySessionStore::new()),
         StoreBackend::File => {
+            let root = workspace_root().to_path_buf();
             let path = config
                 .file_path
                 .clone()
                 .unwrap_or_else(default_session_store_path);
-            let store = FileSessionStore::new(path)?;
+            let store = FileSessionStore::new(root, path)?;
             Ok(store as SharedSessionStore)
         }
         StoreBackend::Redis => {
@@ -802,8 +806,18 @@ async fn watch_packs(pack_root: Utf8PathBuf, state: AppState) -> Result<()> {
     Ok(())
 }
 
+fn resolve_packs_root(config: &PackConfig) -> Result<Utf8PathBuf> {
+    let workspace = workspace_root();
+    let workspace_root = workspace
+        .as_std_path()
+        .canonicalize()
+        .with_context(|| format!("failed to canonicalize workspace root {workspace}"))?;
+    let safe_root = normalize_under_root(&workspace_root, config.root.as_std_path())?;
+    Utf8PathBuf::from_path_buf(safe_root).map_err(|_| anyhow!("packs root is not valid UTF-8"))
+}
+
 fn build_pack_index(config: &PackConfig) -> Result<PackIndex> {
-    let root = workspace_root().join(&config.root);
+    let root = resolve_packs_root(config)?;
     if !root.exists() {
         warn!(root = %root, "pack root does not exist");
         return Ok(PackIndex::default());
@@ -903,7 +917,7 @@ fn infer_base_deployment_plan(
     let telemetry_required = manifest
         .kind
         .as_deref()
-        .map(|k| k.eq_ignore_ascii_case("deployment"))
+        .map(|k| k.eq_ignore_ascii_case("application") || k.eq_ignore_ascii_case("deployment"))
         .unwrap_or(false);
 
     Ok(DeploymentPlan {
@@ -931,12 +945,13 @@ fn infer_base_deployment_plan(
 
 fn run_pack_validator() -> Result<()> {
     let config = load_config(None)?;
+    let packs_root = resolve_packs_root(&config.packs)?;
     let script = workspace_root().join("scripts/packs_test.py");
     if !script.exists() {
         bail!("pack validation script not found at {script}");
     }
 
-    info!(root = %config.packs.root, script = %script, "running pack validation script");
+    info!(root = %packs_root, script = %script, "running pack validation script");
     let status = ProcessCommand::new("python3")
         .arg(script.as_str())
         .current_dir(workspace_root())
@@ -953,6 +968,7 @@ fn run_pack_validator() -> Result<()> {
 
 fn list_packs(args: PackListArgs) -> Result<()> {
     let config = load_config(None)?;
+    let packs_root = resolve_packs_root(&config.packs)?;
     let index = build_pack_index(&config.packs)?;
     let tenant = args.tenant.as_deref().or(config.defaults.tenant.as_deref());
     let team = args.team.as_deref().or(config.defaults.team.as_deref());
@@ -960,7 +976,7 @@ fn list_packs(args: PackListArgs) -> Result<()> {
     let (resolved, resolved_keys, missing_keys) = index.resolve_for(tenant, team, user);
 
     if resolved.is_empty() {
-        println!("No packs found under {}", config.packs.root);
+        println!("No packs found under {packs_root}");
         return Ok(());
     }
 
@@ -989,6 +1005,7 @@ fn list_packs(args: PackListArgs) -> Result<()> {
 
 fn plan_pack(args: PlanArgs) -> Result<()> {
     let config = load_config(None)?;
+    let packs_root = resolve_packs_root(&config.packs)?;
     let index = build_pack_index(&config.packs)?;
     let tenant = args
         .tenant
@@ -998,8 +1015,7 @@ fn plan_pack(args: PlanArgs) -> Result<()> {
     let (resolved, _, _) = index.resolve_for(Some(&tenant), team, None);
     if resolved.is_empty() {
         bail!(
-            "no packs found under {} (consider adjusting [packs].root or tenant defaults)",
-            config.packs.root
+            "no packs found under {packs_root} (consider adjusting [packs].root or tenant defaults)"
         );
     }
     let entry = if let Some(pack_id) = args.pack_id.as_deref() {
@@ -1039,11 +1055,12 @@ fn reload_packs_cli(args: ReloadArgs) -> Result<()> {
     }
 
     let config = load_config(None)?;
+    let packs_root = resolve_packs_root(&config.packs)?;
     let index = build_pack_index(&config.packs)?;
     println!(
         "Rebuilt pack index with {} entries under {}",
         index.entries.len(),
-        config.packs.root
+        packs_root
     );
     for entry in &index.entries {
         println!(
@@ -1879,9 +1896,9 @@ mod app_tests {
 
     #[test]
     fn pack_kind_round_trip() {
-        let json = r#""deployment""#;
+        let json = r#""application""#;
         let parsed: PackKind = serde_json::from_str(json).expect("parse pack kind");
-        assert!(matches!(parsed, PackKind::Deployment));
+        assert!(matches!(parsed, PackKind::Application));
         let serialized = serde_json::to_string(&parsed).expect("serialize pack kind");
         assert_eq!(serialized, json);
     }
@@ -1896,7 +1913,7 @@ mod app_tests {
             "id": "demo",
             "name": "Demo Pack",
             "version": "0.1.0",
-            "kind": "deployment",
+            "kind": "application",
             "type": "events",
             "scenarios": [
                 { "id": "flow_a" },
@@ -1909,7 +1926,7 @@ mod app_tests {
         let entry = PackEntry {
             id: "demo".to_string(),
             name: Some("Demo Pack".to_string()),
-            kind: Some("deployment".to_string()),
+            kind: Some("application".to_string()),
             path: Utf8PathBuf::from_path_buf(pack_dir.clone()).expect("utf8 path"),
         };
 
