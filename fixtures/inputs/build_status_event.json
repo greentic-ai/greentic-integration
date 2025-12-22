@@ -1,0 +1,20 @@
+{
+  "topic": "greentic.repo.build.status",
+  "type": "com.greentic.repo.build.status.v1",
+  "subject": "repo:my-service",
+  "tenant": {
+    "id": "tenant-123",
+    "name": "Example Tenant"
+  },
+  "payload": {
+    "status": "success",
+    "commit": "1a2b3c",
+    "repo": "my-service",
+    "duration_ms": 12345
+  },
+  "metadata": {
+    "request_id": "abcd-ef01",
+    "trace_id": "abc123",
+    "attempt": 1
+  }
+}

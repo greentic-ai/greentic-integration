@@ -3,3 +3,5 @@
 webchat-e2e/node_modules/
 webchat-e2e/test-results/
 webchat-e2e/playwright-report/
+target/e2e/
+/.direnv

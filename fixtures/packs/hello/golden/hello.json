@@ -1,0 +1,7 @@
+{
+  "scenario_id": "hello-flow",
+  "transcript": [
+    "USER: hello",
+    "BOT: hi there"
+  ]
+}

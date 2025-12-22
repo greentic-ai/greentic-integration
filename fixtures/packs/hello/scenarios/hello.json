@@ -1,0 +1,7 @@
+{
+  "scenario": "hello-flow",
+  "steps": [
+    { "kind": "send", "from": "USER", "text": "hello" },
+    { "kind": "reply", "from": "BOT", "text": "hi there" }
+  ]
+}

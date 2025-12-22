@@ -139,3 +139,63 @@ from the config (or run the script again with a new SHA) to unpin.
   golden data.
 - `docs/ADDING_A_PROVIDER_SIM.md` – process for extending provider simulators and updating
   capability parity checks.
+
+## End-to-End Harness
+
+The E2E harness lives in `crates/app/src/harness`. Run the smoke test with:
+
+```bash
+cargo test -p greentic-integration e2e_smoke
+```
+
+`TestEnv` writes logs/artifacts under `target/e2e/<test-name>/`; set `E2E_TEST_NAME` to control
+the folder name (defaults to a sanitized thread name or timestamp).
+
+Infra-backed E2E (NATS + Postgres) uses Docker Compose in `tests/compose/compose.e2e.yml`:
+
+```bash
+cargo test -p greentic-integration e2e_infra
+```
+
+Logs are captured under `target/e2e/<test-name>/logs/compose.log` before teardown.
+
+Pack lifecycle and scenario DSL tests:
+
+```bash
+cargo test -p greentic-integration e2e_pack_lifecycle
+cargo test -p greentic-integration e2e_scenario_smoke
+cargo test -p greentic-integration e2e_multi_tenant_isolation
+```
+
+Pack helpers look for binaries under `tests/bin/`, `target/{release,debug}/`, or PATH and stub when unavailable, writing artifacts to `target/e2e/<test>/artifacts/`.
+
+Greentic stack boot (runner/deployer/store) uses locally available binaries (looked up under
+`tests/bin/`, `target/{release,debug}/`, or PATH). The stack test will skip if binaries are
+missing:
+
+```bash
+cargo test -p greentic-integration e2e_stack_boot
+```
+
+## E2E Test Tiers (CI)
+
+- **L0/L1 (PR)**: `e2e_smoke`, `e2e_scenario_smoke`, `e2e_retry_backoff_flaky_tool`, `e2e_config_precedence`, `e2e_pack_lifecycle`
+- **L2 (nightly/dispatch)**: `e2e_infra`, `e2e_stack_boot`, `e2e_multi_tenant_isolation` plus L0/L1 set
+
+On CI failure, `target/e2e/**` is uploaded for debugging (logs, observations, artifacts).
+
+## Local E2E Runner
+
+Use `./scripts/e2e.sh <tier>` for local runs:
+
+```bash
+./scripts/e2e.sh l1          # run L1 suite
+./scripts/e2e.sh l2 --focus e2e_multi_tenant_isolation
+```
+
+Flags:
+- `--focus <pattern>` – run a single test
+- `E2E_KEEP=1` – retain `target/e2e` between runs
+- `RUST_LOG=info` (default) can be overridden for verbose logs
+
+On failure, the script prints the paths under `target/e2e` for quick inspection.

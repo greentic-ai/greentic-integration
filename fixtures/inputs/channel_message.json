@@ -1,0 +1,14 @@
+{
+  "channel": "webchat",
+  "session_id": "sess-789",
+  "text": "Build succeeded for my-service @1a2b3c (status: success)",
+  "tenant": {
+    "id": "tenant-123",
+    "name": "Example Tenant"
+  },
+  "attachments": [],
+  "metadata": {
+    "trace_id": "trace-123",
+    "correlation_id": "corr-123"
+  }
+}

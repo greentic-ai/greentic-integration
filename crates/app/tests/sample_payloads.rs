@@ -1,24 +1,8 @@
-use std::fs;
-use std::path::PathBuf;
-
-use serde_json::Value;
-
-fn load_payload(name: &str) -> Value {
-    let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-    let path = manifest_dir
-        .join("..")
-        .join("..")
-        .join("samples")
-        .join("payloads")
-        .join(name);
-    let data = fs::read_to_string(&path)
-        .unwrap_or_else(|_| panic!("Failed to read payload file at {path:?}"));
-    serde_json::from_str(&data).expect("payload JSON should parse")
-}
+use greentic_integration::fixtures::Fixture;
 
 #[test]
 fn build_status_event_payload_has_expected_fields() {
-    let payload = load_payload("build_status_event.json");
+    let payload = Fixture::load_json("inputs/build_status_event.json").expect("fixture");
     assert_eq!(payload["topic"], "greentic.repo.build.status");
     assert_eq!(payload["type"], "com.greentic.repo.build.status.v1");
     assert_eq!(payload["subject"], "repo:my-service");
@@ -29,7 +13,7 @@ fn build_status_event_payload_has_expected_fields() {
 
 #[test]
 fn channel_message_payload_has_expected_fields() {
-    let payload = load_payload("channel_message.json");
+    let payload = Fixture::load_json("inputs/channel_message.json").expect("fixture");
     assert_eq!(payload["channel"], "webchat");
     assert_eq!(payload["session_id"], "sess-789");
     assert_eq!(
@@ -43,7 +27,7 @@ fn channel_message_payload_has_expected_fields() {
 
 #[test]
 fn rebuild_request_event_payload_has_expected_fields() {
-    let payload = load_payload("rebuild_request_event.json");
+    let payload = Fixture::load_json("inputs/rebuild_request_event.json").expect("fixture");
     assert_eq!(payload["topic"], "greentic.repo.build.request");
     assert_eq!(payload["type"], "com.greentic.repo.build.request.v1");
     assert_eq!(payload["subject"], "repo:my-service");

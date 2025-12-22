@@ -1,0 +1,76 @@
+name: E2E
+
+on:
+  pull_request:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 3 * * *"
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  e2e-pr:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Cache cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+      - name: E2E L0/L1 tests
+        run: |
+          set -euxo pipefail
+          cargo test -p greentic-integration \
+            e2e_smoke \
+            e2e_scenario_smoke \
+            e2e_retry_backoff_flaky_tool \
+            e2e_config_precedence \
+            e2e_pack_lifecycle
+      - name: Upload target/e2e artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-artifacts-pr
+          path: target/e2e/**
+          if-no-files-found: ignore
+          retention-days: 7
+
+  e2e-nightly:
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Cache cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+      - name: E2E L2 tests (nightly/dispatch)
+        run: |
+          set -euxo pipefail
+          cargo test -p greentic-integration \
+            e2e_infra \
+            e2e_stack_boot \
+            e2e_multi_tenant_isolation \
+            e2e_retry_backoff_flaky_tool \
+            e2e_config_precedence \
+            e2e_pack_lifecycle
+      - name: Upload target/e2e artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-artifacts-nightly
+          path: target/e2e/**
+          if-no-files-found: ignore
+          retention-days: 7

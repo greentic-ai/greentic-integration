@@ -1,0 +1,15 @@
+{
+  "id": "hello-pack",
+  "name": "Hello Pack",
+  "version": "0.0.1",
+  "description": "Minimal hello-world pack for E2E lifecycle smoke tests.",
+  "type": "application",
+  "scenarios": [
+    {
+      "id": "hello-flow",
+      "entry": "scenarios/hello.json",
+      "golden": "golden/hello.json"
+    }
+  ],
+  "artifact": "hello.gtpack"
+}

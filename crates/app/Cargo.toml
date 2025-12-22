@@ -25,6 +25,11 @@ notify.workspace = true
 ureq.workspace = true
 once_cell.workspace = true
 greentic-types.workspace = true
+async-nats.workspace = true
+tokio-postgres.workspace = true
+futures.workspace = true
+toml.workspace = true
+chrono.workspace = true
 
 [dev-dependencies]
 tempfile.workspace = true

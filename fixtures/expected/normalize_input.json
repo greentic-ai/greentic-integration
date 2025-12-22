@@ -1,0 +1,17 @@
+{
+  "payload": {
+    "timestamp": 1712345678901,
+    "trace_id": "trace-123",
+    "span_id": "abcd-ef01",
+    "nested": {
+      "span_id": "nested-span",
+      "keep": "ok"
+    },
+    "list": [
+      {
+        "uuid": "123e4567-e89b-12d3-a456-426614174000",
+        "value": 1
+      }
+    ]
+  }
+}
