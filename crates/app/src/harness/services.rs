@@ -175,6 +175,7 @@ fn locate_binary(name: &str) -> Option<PathBuf> {
 fn binary_candidates(name: &str) -> Vec<PathBuf> {
     let mut paths = Vec::new();
     let root = workspace_root();
+    paths.push(root.join("tests/bin/linux-x86_64").join(name));
     paths.push(root.join("tests/bin").join(name));
     paths.push(root.join("target/release").join(name));
     paths.push(root.join("target/debug").join(name));

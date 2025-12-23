@@ -3,6 +3,7 @@ use std::{collections::HashMap, fs, sync::Arc};
 use anyhow::{Context, Result, anyhow};
 use camino::Utf8PathBuf;
 use parking_lot::Mutex;
+use redis::Commands;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
@@ -246,6 +247,111 @@ impl SessionStore for FileSessionStore {
     }
 }
 
+pub struct RedisSessionStore {
+    client: redis::Client,
+    bucket: String,
+}
+
+impl RedisSessionStore {
+    pub fn new(url: &str, prefix: Option<String>) -> Result<Arc<Self>> {
+        let client = redis::Client::open(url.to_string())
+            .with_context(|| format!("failed to create redis client for {url}"))?;
+        let bucket = prefix.unwrap_or_else(|| "greentic:sessions".to_string());
+        Ok(Arc::new(Self { client, bucket }))
+    }
+
+    fn with_conn<T>(&self, f: impl FnOnce(&mut redis::Connection) -> Result<T>) -> Result<T> {
+        let mut conn = self.client.get_connection().with_context(|| {
+            format!(
+                "failed to connect to redis at {:?}",
+                self.client.get_connection_info()
+            )
+        })?;
+        f(&mut conn)
+    }
+
+    fn load_all(&self) -> Result<HashMap<String, SessionRecord>> {
+        self.with_conn(|conn| {
+            let raw: HashMap<String, String> = conn
+                .hgetall(&self.bucket)
+                .with_context(|| format!("failed to fetch sessions hash {}", self.bucket))?;
+            let mut out = HashMap::new();
+            for (key, json) in raw {
+                if let Ok(record) = serde_json::from_str::<SessionRecord>(&json) {
+                    out.insert(key, record);
+                }
+            }
+            Ok(out)
+        })
+    }
+
+    fn persist(&self, record: &SessionRecord) -> Result<()> {
+        self.with_conn(|conn| {
+            let json = serde_json::to_string(record)?;
+            let _: () = conn
+                .hset(&self.bucket, &record.key, json)
+                .with_context(|| format!("failed to hset {}", self.bucket))?;
+            Ok(())
+        })
+    }
+
+    fn delete(&self, key: &str) -> Result<()> {
+        self.with_conn(|conn| {
+            let _: () = conn
+                .hdel(&self.bucket, key)
+                .with_context(|| format!("failed to hdel {} {}", self.bucket, key))?;
+            Ok(())
+        })
+    }
+}
+
+impl SessionStore for RedisSessionStore {
+    fn list(&self, filter: &SessionFilter) -> Result<Vec<SessionRecord>> {
+        let all = self.load_all()?;
+        Ok(all
+            .values()
+            .filter(|record| filter.matches(record))
+            .cloned()
+            .collect())
+    }
+
+    fn purge(&self, filter: &SessionFilter) -> Result<usize> {
+        let all = self.load_all()?;
+        let mut removed = 0;
+        for (key, record) in all {
+            if filter.matches(&record) {
+                self.delete(&key)?;
+                removed += 1;
+            }
+        }
+        Ok(removed)
+    }
+
+    fn upsert(&self, payload: SessionUpsert) -> Result<SessionRecord> {
+        let record = SessionRecord {
+            key: payload.key,
+            tenant: payload.tenant,
+            team: payload.team,
+            user: payload.user,
+            flow_id: payload.flow_id,
+            node_id: payload.node_id,
+            context: payload.context,
+            updated_at_epoch_ms: current_timestamp_ms(),
+        };
+        self.persist(&record)?;
+        Ok(record)
+    }
+
+    fn find(&self, filter: &SessionFilter) -> Result<Option<SessionRecord>> {
+        let all = self.load_all()?;
+        Ok(all.values().find(|r| filter.matches(r)).cloned())
+    }
+
+    fn remove(&self, key: &str) -> Result<()> {
+        self.delete(key)
+    }
+}
+
 fn current_timestamp_ms() -> u64 {
     use std::time::{SystemTime, UNIX_EPOCH};
     SystemTime::now()
@@ -259,6 +365,7 @@ mod tests {
     use super::*;
     use serde_json::json;
     use tempfile::tempdir;
+    use uuid::Uuid;
 
     #[test]
     fn in_memory_find_and_remove() {
@@ -309,6 +416,49 @@ mod tests {
         assert_eq!(results.len(), 1);
 
         store.remove("sess-999").unwrap();
+        assert!(store.list(&filter).unwrap().is_empty());
+    }
+
+    #[test]
+    fn redis_store_round_trip() {
+        let url = match std::env::var("REDIS_URL") {
+            Ok(url) => url,
+            Err(_) => {
+                eprintln!("skipping redis_store_round_trip: REDIS_URL not set");
+                return;
+            }
+        };
+        let prefix = format!("greentic:test:{}", Uuid::new_v4());
+        let store = RedisSessionStore::new(&url, Some(prefix.clone())).unwrap();
+        // clean bucket
+        let mut conn = redis::Client::open(url.clone())
+            .unwrap()
+            .get_connection()
+            .unwrap();
+        let _: i32 = redis::cmd("DEL").arg(&prefix).query(&mut conn).unwrap();
+
+        let filter = SessionFilter::new(Some("tenant".into()), None, Some("user".into()));
+        let rec = store
+            .upsert(SessionUpsert {
+                key: "k1".into(),
+                tenant: "tenant".into(),
+                team: None,
+                user: Some("user".into()),
+                flow_id: Some("flow".into()),
+                node_id: None,
+                context: json!({"foo": "bar"}),
+            })
+            .unwrap();
+        assert_eq!(rec.key, "k1");
+
+        let found = store.find(&filter).unwrap().expect("record present");
+        assert_eq!(found.key, "k1");
+
+        let listed = store.list(&filter).unwrap();
+        assert_eq!(listed.len(), 1);
+
+        let removed = store.purge(&filter).unwrap();
+        assert_eq!(removed, 1);
         assert!(store.list(&filter).unwrap().is_empty());
     }
 }

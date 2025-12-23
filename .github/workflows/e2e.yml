@@ -11,6 +11,10 @@ permissions:
 
 env:
   CARGO_TERM_COLOR: always
+  GREENTIC_INTEGRATION_STRICT: "1"
+  GREENTIC_PACK_NO_FALLBACK: "1"
+  GREENTIC_STACK_STRICT: "1"
+  GREENTIC_DEV_E2E_STRICT: "1"
 
 jobs:
   e2e-pr:
@@ -19,6 +23,27 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
+      - name: Install wasm32-wasip2 target
+        run: rustup target add wasm32-wasip2
+      - name: Install jq
+        run: sudo apt-get update && sudo apt-get install -y jq
+      - name: Fetch greentic binaries (strict)
+        run: ./scripts/fetch_greentic_binaries.sh
+        env:
+          GREENTIC_INTEGRATION_STRICT: "1"
+          GREENTIC_PACK_NO_FALLBACK: "1"
+          GREENTIC_STACK_STRICT: "1"
+          GREENTIC_DEV_E2E_STRICT: "1"
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GREENTIC_RUNNER_VERSION: ${{ vars.GREENTIC_RUNNER_VERSION }}
+          GREENTIC_DEPLOYER_VERSION: ${{ vars.GREENTIC_DEPLOYER_VERSION }}
+          GREENTIC_STORE_VERSION: ${{ vars.GREENTIC_STORE_VERSION }}
+          GREENTIC_RUNNER_URL: ${{ vars.GREENTIC_RUNNER_URL }}
+          GREENTIC_RUNNER_SHA256: ${{ secrets.GREENTIC_RUNNER_SHA256 }}
+          GREENTIC_DEPLOYER_URL: ${{ vars.GREENTIC_DEPLOYER_URL }}
+          GREENTIC_DEPLOYER_SHA256: ${{ secrets.GREENTIC_DEPLOYER_SHA256 }}
+          GREENTIC_STORE_URL: ${{ vars.GREENTIC_STORE_URL }}
+          GREENTIC_STORE_SHA256: ${{ secrets.GREENTIC_STORE_SHA256 }}
       - name: Cache cargo
         uses: actions/cache@v4
         with:
@@ -30,12 +55,21 @@ jobs:
       - name: E2E L0/L1 tests
         run: |
           set -euxo pipefail
-          cargo test -p greentic-integration \
+          for test in \
             e2e_smoke \
             e2e_scenario_smoke \
             e2e_retry_backoff_flaky_tool \
             e2e_config_precedence \
-            e2e_pack_lifecycle
+            e2e_pack_lifecycle \
+            pr13_greentic_dev_e2e \
+            e2e_greentic_dev_negative \
+            e2e_greentic_dev_offline \
+            e2e_greentic_dev_snapshot \
+            e2e_greentic_dev_multi_pack \
+            e2e_regression
+          do
+            cargo test -p greentic-integration "$test"
+          done
       - name: Upload target/e2e artifacts
         if: always()
         uses: actions/upload-artifact@v4
@@ -51,6 +85,27 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
+      - name: Install wasm32-wasip2 target
+        run: rustup target add wasm32-wasip2
+      - name: Install jq
+        run: sudo apt-get update && sudo apt-get install -y jq
+      - name: Fetch greentic binaries (strict)
+        run: ./scripts/fetch_greentic_binaries.sh
+        env:
+          GREENTIC_INTEGRATION_STRICT: "1"
+          GREENTIC_PACK_NO_FALLBACK: "1"
+          GREENTIC_STACK_STRICT: "1"
+          GREENTIC_DEV_E2E_STRICT: "1"
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GREENTIC_RUNNER_VERSION: ${{ vars.GREENTIC_RUNNER_VERSION }}
+          GREENTIC_DEPLOYER_VERSION: ${{ vars.GREENTIC_DEPLOYER_VERSION }}
+          GREENTIC_STORE_VERSION: ${{ vars.GREENTIC_STORE_VERSION }}
+          GREENTIC_RUNNER_URL: ${{ vars.GREENTIC_RUNNER_URL }}
+          GREENTIC_RUNNER_SHA256: ${{ secrets.GREENTIC_RUNNER_SHA256 }}
+          GREENTIC_DEPLOYER_URL: ${{ vars.GREENTIC_DEPLOYER_URL }}
+          GREENTIC_DEPLOYER_SHA256: ${{ secrets.GREENTIC_DEPLOYER_SHA256 }}
+          GREENTIC_STORE_URL: ${{ vars.GREENTIC_STORE_URL }}
+          GREENTIC_STORE_SHA256: ${{ secrets.GREENTIC_STORE_SHA256 }}
       - name: Cache cargo
         uses: actions/cache@v4
         with:
@@ -62,13 +117,22 @@ jobs:
       - name: E2E L2 tests (nightly/dispatch)
         run: |
           set -euxo pipefail
-          cargo test -p greentic-integration \
+          for test in \
             e2e_infra \
             e2e_stack_boot \
             e2e_multi_tenant_isolation \
             e2e_retry_backoff_flaky_tool \
             e2e_config_precedence \
-            e2e_pack_lifecycle
+            e2e_pack_lifecycle \
+            pr13_greentic_dev_e2e \
+            e2e_greentic_dev_negative \
+            e2e_greentic_dev_offline \
+            e2e_greentic_dev_snapshot \
+            e2e_greentic_dev_multi_pack \
+            e2e_regression
+          do
+            cargo test -p greentic-integration "$test"
+          done
       - name: Upload target/e2e artifacts
         if: always()
         uses: actions/upload-artifact@v4

@@ -54,6 +54,40 @@ definitions, and golden transcripts. Run `make packs.test` to ensure manifests s
 well-formed. Set `GREENTIC_PACK_VALIDATE=1` to opt-in to the real `greentic-dev` /
 `greentic-pack` CLI checks once those binaries are available locally.
 
+### Greentic-dev E2E (PR-13)
+
+The greentic-dev workflow test (`pr13_greentic_dev_e2e`) scaffolds a component, builds it
+to Wasm, wires it into a pack, and runs/validates the pack. To run locally:
+
+- Install `greentic-dev` and `packc` on your PATH.
+- Install the Rust target: `rustup target add wasm32-wasip2`.
+- Set strict mode to fail on missing tools: `GREENTIC_DEV_E2E_STRICT=1 cargo test -p greentic-integration pr13_greentic_dev_e2e -- --nocapture`.
+- The test isolates HOME/XDG into a temp dir and uses fixture config at
+  `tests/fixtures/greentic-dev/profiles/default.toml` plus the fixture public key
+  `tests/fixtures/keys/ed25519_test_pub.pem`. No real secrets are required; pack verification
+  uses `packc` with `--allow-unsigned` when supported, otherwise it signs with a temp key.
+
+The negative suite (`e2e_greentic_dev_negative`) exercises failure paths (bad component build,
+missing components, invalid add-step, invalid flow) and expects clear error messages without
+producing artifacts; it shares the same environment setup as above.
+
+The offline/local-store suite (`e2e_greentic_dev_offline`) proves greentic-dev can build and
+run using a filesystem store without network:
+- Uses isolated HOME/XDG + fixture profile, sets `CARGO_NET_OFFLINE=1` and
+  `GREENTIC_COMPONENT_STORE=<tmp>/local-store`.
+- Builds a component, installs it into the local store, validates/builds a pack with `--offline`,
+  and attempts a pack run expecting `OFFLINE::WORLD` output.
+- In non-strict mode, the test will skip if required tooling or cached crates are missing; set
+  `GREENTIC_DEV_E2E_STRICT=1` to fail fast.
+
+The snapshot stability suite (`e2e_greentic_dev_snapshot`) generates a pack/flow and asserts
+their normalized YAML remains stable via `insta` snapshots. Run it with the same environment as
+above; update snapshots intentionally via `cargo insta review` when schema changes are expected.
+
+Regression harness (`e2e_regression`) runs the greentic-dev E2E scenarios (PR-13–PR-17: workflow,
+negative, offline, snapshot, multi-pack). It shells out to `cargo test` for each scenario and
+fails fast; set `E2E_REGRESSION_CHILD=1` to avoid recursion when invoking tests directly.
+
 ## Renderer Snapshots
 
 Provider simulators live under `harness/providers-sim`. Run `make render.snapshot` to execute

@@ -119,13 +119,24 @@ impl ScenarioRunner {
                     )?;
                 }
                 Step::InstallPack { pack_id } => {
-                    self.record("install_pack_stub", json!({"pack_id": pack_id}))?;
+                    self.record(
+                        "install_pack",
+                        json!({"pack_id": pack_id, "status": "recorded"}),
+                    )?;
                 }
                 Step::StartService { name } => {
-                    self.record("start_service_stub", json!({"name": name}))?;
+                    self.record("start_service", json!({"name": name, "status": "recorded"}))?;
                 }
                 Step::HttpPost { url, body } => {
-                    self.record("http_post_stub", json!({"url": url, "body": body}))?;
+                    let resp = ureq::post(url).send_json(body.clone());
+                    let (status, text) = match resp {
+                        Ok(r) => (r.status().as_u16() as i32, String::new()),
+                        Err(err) => (0, err.to_string()),
+                    };
+                    self.record(
+                        "http_post",
+                        json!({"url": url, "body": body, "status": status, "response": text}),
+                    )?;
                 }
             }
         }

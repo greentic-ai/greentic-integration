@@ -6,6 +6,11 @@ use serde_json::json;
 
 #[tokio::test]
 async fn e2e_config_secrets_precedence() -> anyhow::Result<()> {
+    if !greentic_integration::harness::docker_available() {
+        eprintln!("skipping e2e_config_precedence: docker daemon not available");
+        return Ok(());
+    }
+
     let env = TestEnv::up().await?;
     env.healthcheck().await?;
 

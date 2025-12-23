@@ -76,6 +76,10 @@ pub fn pack_build(
         });
     }
 
+    if strict_pack_mode() {
+        bail!("pack build binaries not found and strict mode is enabled");
+    }
+
     // Fallback: copy fixture gtpack if present; else serialize pack.json as placeholder.
     let fixture_gtpack = fixture_root.join("hello.gtpack");
     if fixture_gtpack.exists() {
@@ -139,6 +143,10 @@ pub fn pack_verify(gtpack: &Path, logs_dir: &Path) -> Result<PackVerifyResult> {
         });
     }
 
+    if strict_pack_mode() {
+        bail!("pack verify binaries not found and strict mode is enabled");
+    }
+
     // Stub verification: ensure file parses as JSON.
     let data = fs::read_to_string(gtpack)
         .with_context(|| format!("failed to read {}", gtpack.display()))?;
@@ -200,6 +208,10 @@ pub fn pack_install(
         });
     }
 
+    if strict_pack_mode() {
+        bail!("pack install binaries not found and strict mode is enabled");
+    }
+
     // Stub install: copy gtpack and note target.
     let data = fs::read(gtpack).with_context(|| format!("failed to read {}", gtpack.display()))?;
     fs::write(&install_out, data)
@@ -245,4 +257,17 @@ fn binary_candidates(name: &str) -> Vec<PathBuf> {
         }
     }
     paths
+}
+
+fn strict_pack_mode() -> bool {
+    let vars = [
+        "GREENTIC_PACK_STRICT",
+        "GREENTIC_PACK_NO_FALLBACK",
+        "GREENTIC_INTEGRATION_STRICT",
+    ];
+    vars.iter().any(|name| {
+        std::env::var(name)
+            .map(|v| v == "1" || v.eq_ignore_ascii_case("true"))
+            .unwrap_or(false)
+    })
 }

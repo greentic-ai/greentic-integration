@@ -1,0 +1,6 @@
+[distributor]
+default_profile = { name = "default", kind = "pack", store = { kind = "local", path = "__STORE_PATH__" } }
+
+[distributor.profiles.default]
+kind = "pack"
+store = { kind = "local", path = "__STORE_PATH__" }

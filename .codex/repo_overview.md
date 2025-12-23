@@ -1,44 +1,49 @@
 # Repository Overview
 
 ## 1. High-Level Purpose
-- Integration harness for the Greentic demo stack, combining Rust crates, pack fixtures, and helper scripts to exercise runner/providor flows end-to-end.
-- Provides a lightweight HTTP/CLI app for managing packs and sessions, simulator crates for renderer and runner invariants, deterministic demo flows/payloads, and utility tooling for local infra, validation, and Playwright WebChat checks.
+- Integration harness for the Greentic stack: Rust CLI/HTTP app plus Docker-backed E2E harness that exercises packs, runner flows, and provider simulators.
+- Supplies deterministic fixtures, simulators, and tiered E2E/CI tooling (Compose for NATS/Postgres, scenario DSL, and local scripts/workflows) to validate end-to-end behavior and developer workflows.
 
 ## 2. Main Components and Functionality
-- **Path:** `crates/app` — Rust CLI/HTTP service (`greentic-integration`) that loads config defaults, indexes packs, and offers endpoints for health, pack list/reload, runner event emit/list/clear, and session upsert/list/resume/purge; includes CLI helpers for pack validation (`scripts/packs_test.py`), listing, deployment plan inference, runner emit/events/clear, and session maintenance; session store supports in-memory or file-backed JSON; runner proxy synthesizes/records stub events; E2E harness (`harness` module) provisions per-test dirs, Docker Compose NATS/Postgres stack, optional Greentic stack process boot with log capture, pack build/verify/install helpers, fixtures loader/normalizer, config/secret precedence utilities, scenario DSL for NATS-driven flows, and tenant-scoped helpers.
-- **Path:** `crates/deploy-plan-component` — WASM-friendly library that writes a deployment plan JSON exposed by host bindings to `/iac/plan.json`, with tests using an injectable runtime to verify status logging and pretty-printing behavior.
-- **Path:** `harness/providers-sim` — Renderer/provider simulator that loads pack manifests and golden transcripts to produce deterministic `RenderReport` records and validates scenario/manifest consistency; includes capability parity checks against `capabilities/providers.yaml` and golden snapshot comparisons in `golden/render_reports.json`.
-- **Path:** `harness/runner-smoke` — CLI harness that loads JSON cases from `harness/runner-smoke/cases` to verify runner invariants (tenant isolation, ordered sequences, state snapshot presence, once-only trace IDs) and reports aggregated results.
-- **Path:** `packs/` — Canonical pack fixtures (manifests, scenarios, golden transcripts, README context) including demo, adaptive, deployment, and network examples; validated by `make packs.test` / `scripts/packs_test.py`, and consumed by renderer snapshot tests.
-- **Path:** `flows/` — YAML flow definitions: `chat_driven/repo_assistant.ygtc` routes webchat ingress to a worker with optional rebuild event emission; `events_to_message/build_status_notifications.ygtc` bridges build-status events to messaging channels.
-- **Path:** `scripts/` — Utility scripts: pack validation (`packs_test.py`), dev environment checks (`dev-check/check.sh`), golden snapshot refresh (`update_golden.sh`), deploy component build, demo payload replays, Playwright/WebChat runners, and stub dev bootstrap logging (`dev_stub.sh`).
-- **Path:** `fixtures/` — Standardized test fixtures (`inputs/`, `expected/`, `packs/`, `config/`, `secrets/`) plus JSON/text loader helpers and normalizer in `crates/app/src/fixtures.rs`; includes `packs/hello` minimal pack project and fallback `hello.gtpack`.
-- **Path:** `compose/stack.yml` — Docker Compose stack for local infra (NATS with JetStream, Redis, nginx ingress healthz probe) used by `make stack-up/down`.
-- **Path:** `tests/compose/compose.e2e.yml` — Docker Compose stack for E2E harness (NATS + Postgres) driven by `TestEnv` for infra tests.
-- **Path:** `configs/demo_local.yaml` — Sample runner configuration wiring local demo providers/bridges/workers to fixture components under `packs/integration-demos/components/`.
-- **Path:** `webchat-e2e/` — Playwright UI test harness with config and tests runnable via `make webchat.e2e` (uses local stub backend by default).
-- **Path:** `samples/payloads/` — JSON payload fixtures (build status, rebuild request, channel message) exercised by crate tests and replay scripts.
-- **Path:** `scripts/e2e.sh` — Local E2E runner for tiered suites (`l0|l1|l2`) with focus filtering and artifact hints.
-- **Path:** `.github/workflows/e2e.yml` — CI workflow running L0/L1 on PR and L2 on nightly/dispatch, uploading `target/e2e` artifacts on completion/failure.
+- **Path:** `crates/app`  
+  - **Role:** Main integration crate/CLI (`greentic-integration`) and E2E harness library.  
+  - **Key functionality:** Loads config defaults, indexes packs, serves pack/session/runner HTTP endpoints, CLI helpers for pack list/reload/plan and session maintenance; session store supports memory, file, or Redis; runner proxy records events and can forward to an external runner URL; pack watch reloads index on file changes; `harness::TestEnv` spins Compose NATS+Postgres with health probes, captures logs/artifacts under `target/e2e/<test>/`, and can boot local Greentic binaries; pack helpers build/verify/install via greentic binaries when present (fallback with optional strict mode); config/secret layer merge utilities; fixture loader/normalizer; scenario DSL/runner for NATS publish/await, HTTP POST, and JSON assertions; greentic-dev E2E harness isolates HOME/XDG config, writes fixture profiles to both XDG and HOME, and verifies packs with `packc` (allow-unsigned if supported, otherwise temp signing).
+- **Path:** `crates/deploy-plan-component`  
+  - **Role:** Minimal deploy-plan component for WASM/guest bindings.  
+  - **Key functionality:** Reads deployment plan via host runtime trait and writes pretty JSON to `/iac/plan.json`, with injectable runtime for tests.
+- **Path:** `harness/providers-sim`  
+  - **Role:** Deterministic provider simulator and renderer snapshot suite.  
+  - **Key functionality:** Capability parity checks (`capabilities/providers.yaml`), golden comparisons in `golden/render_reports.json`, and snapshot update flow (`make render.snapshot`).
+- **Path:** `harness/runner-smoke`  
+  - **Role:** Runner smoke harness validating traces/cases before hitting real runner.  
+  - **Key functionality:** Replays cases from `cases/`, checks tenant isolation, ordered effects, state writes, and once-only trace IDs; runnable via `make runner.smoke`.
+- **Path:** `tests/` (+ `tests/compose/compose.e2e.yml`)  
+  - **Role:** Tiered E2E suite.  
+  - **Key functionality:** Compose NATS/Postgres infra test (`e2e_infra`), smoke harness (`e2e_smoke`), scenario DSL round-trip (`e2e_scenario_smoke`), retry/backoff flaky tool (`e2e_retry_backoff`), config+secrets precedence (`e2e_config_precedence`), pack lifecycle stub/build (`e2e_pack_lifecycle`), stack boot when binaries exist (`e2e_stack_boot`), multi-tenant isolation over NATS (`e2e_multi_tenant_isolation`), greentic-dev workflow test (`pr13_greentic_dev_e2e`), greentic-dev negative validation suite (`e2e_greentic_dev_negative`), offline/local-store workflow (`e2e_greentic_dev_offline`), greentic-dev snapshot stability (`e2e_greentic_dev_snapshot`), multi-pack shared-component test (`e2e_greentic_dev_multi_pack`), and regression runner (`e2e_regression`) that shells out to run the greentic-dev suites. Tests use isolated HOME/XDG roots, fixture distributor profile/key, and skip when greentic-dev/packc or wasm targets are unavailable. Artifacts/logs land under `target/e2e/`.
+- **Path:** `fixtures/`, `packs/`, `flows/`, `samples/`  
+  - **Role:** Shared data for tests and demos.  
+  - **Key functionality:** Standard fixture layout (packs/config/secrets/inputs/expected), pack project/gtpack fallback (`fixtures/packs/hello`), flow definitions (`flows/chat_driven`, `flows/events_to_message`), greentic-dev fixture profile (`tests/fixtures/greentic-dev/profiles/default.toml`) and public key (`tests/fixtures/keys/ed25519_test_pub.pem`), and sample payloads consumed by tests and replay scripts.
+- **Path:** `scripts/e2e.sh`, `scripts/fetch_greentic_binaries.sh`, `.github/workflows/e2e.yml`  
+  - **Role:** Tiered E2E runners (local and CI) and binary bootstrap.  
+  - **Key functionality:** `scripts/e2e.sh` wraps cargo tests by tier with focus filtering and artifact hints; `scripts/fetch_greentic_binaries.sh` pulls runner/deployer/store release assets with checksum verification into `tests/bin/linux-x86_64`; workflow runs L0/L1 on PR, L2 nightly/dispatch, installs `wasm32-wasip2`, fetches binaries, runs `pr13_greentic_dev_e2e` alongside other tiers, and uploads `target/e2e` artifacts.
+- **Path:** `compose/stack.yml`, `configs/`, `docs/`, `webchat-e2e/`  
+  - **Role:** Local infra/ingress stack, config samples, contributor docs, and Playwright UI harness.  
+  - **Key functionality:** NATS/Redis/nginx compose stack, demo configs, scenario/provider how-tos, and webchat contract/UI suites (stubbed backend by default).
 
 ## 3. Work In Progress, TODOs, and Stubs
-- `crates/app/src/main.rs:541-544` — Pack watch mode flagged as “not implemented yet”; server continues without live pack reload despite `--watch`.
-- `crates/app/src/main.rs:711-729` — Session store Redis backend explicitly unsupported (bails with “Redis backend not supported yet”).
-- `crates/app/src/main.rs:1371-1454` — Runner proxy (`RunnerHostProxy`/`proxy_runner_loop`) only logs and echoes synthetic events; no real runner integration or host bridge.
-- `crates/app/src/harness/services.rs` & `crates/app/tests/e2e_stack_boot.rs` — Stack boot relies on local Greentic binaries (runner/deployer/store) discovered under `tests/bin` or `target/{release,debug}`; test skips when binaries or Docker are absent.
-- `crates/app/tests/e2e_retry_backoff.rs` — Retry/backoff test uses a local flaky tool stub; real runner/tool wiring still TODO when binaries are available.
-- `crates/app/tests/e2e_multi_tenant_isolation.rs` — Tenant isolation test uses NATS subjects + tenant-scoped secrets/state under artifacts; real runner/store wiring still pending.
-- `.github/workflows/e2e.yml` — E2E CI tiers assume Docker availability and may skip tests when unavailable; artifacts uploaded for debugging but rely on `target/e2e` contents.
-- `crates/deploy-plan-component/src/lib.rs:15-24` — `GuestPlanRuntime` returns an error because deploy-plan host bindings are absent locally; `DeployPlanComponent::run` is effectively a placeholder until real bindings exist.
-- `scripts/dev_stub.sh:4-23` — Stub target invoked by `make dev.min` / `make dev.full`, only logs a placeholder message to `.logs/<target>.log`.
+- **crates/app/src/main.rs:1370-1454** — Runner proxy still synthesizes events locally; external forwarding is best-effort HTTP only (no real runner API contract yet).
+- **crates/app/src/harness/pack.rs:64-115** — Pack build/verify/install still fall back to fixtures/stubs when binaries are missing; strict mode available via `GREENTIC_PACK_STRICT`.
+- **crates/app/tests/e2e_stack_boot.rs:1-40** — Test skips (or fails when `GREENTIC_STACK_STRICT=1`) if greentic binaries are absent; stack boot coverage depends on local binaries.
+- **crates/app/tests/pr13_greentic_dev_e2e.rs** — Greentic-dev workflow test tolerates missing greentic-dev/packc binaries or `wasm32-wasip2` target by skipping steps; uses dual HOME/XDG fixture config to reduce profile lookup issues; still not a fully strict end-to-end verification without all tools installed.
+- **crates/deploy-plan-component/src/lib.rs:15-36** — Guest runtime returns an error because deploy-plan host bindings are absent; component remains a placeholder.
 
 ## 4. Broken, Failing, or Conflicting Areas
-- No failing tests observed; `cargo test --workspace` currently passes. E2E infra/stack tests are skip-aware when Docker or Greentic binaries are unavailable.
+- Greentic-dev flow add-step can still report “profile default not found” if the fixture config is not picked up; test currently skips unless strict mode forces failure. Ensure greentic-dev reads `$XDG_CONFIG_HOME/greentic-dev/config.toml`/`$HOME/.config/greentic-dev/config.toml`.
+- Component scaffold/build relies on the `wasm32-wasip2` target; CI now installs it, but local runs may skip when missing.
+- Binary-dependent tests rely on downloaded greentic runner/deployer/store assets; strict mode fails fast if the fetch script cannot resolve or verify checksums.
 
 ## 5. Notes for Future Work
-- Implement pack watch reloading and real runner integration so `--watch` and runner proxy calls reflect live system behavior.
-- Add Redis-backed session store support and wire it into config defaults where appropriate.
-- Replace deploy-plan placeholder runtime with actual host bindings/WIT implementation and ensure `DeployPlanComponent::run` succeeds in production environments.
-- Replace stub dev bootstrap targets with real setup flows; keep golden update and validation scripts aligned with evolving pack/renderer specs.
-- Provide local Greentic binaries (runner/deployer/store) and real health endpoints so stack boot tests can fully exercise the stack without skipping.
-- Wire retry/backoff, tenant isolation, and pack lifecycle tests to real runner/tool/store once available; extend CI tiers to include new coverage without excessive runtime.
+- Firm up runner proxy with a real runner API contract and response handling; expand tests.
+- Provide local greentic binaries (runner/deployer/store) and make stack boot/pack helpers run in strict mode in CI.
+- Make greentic-dev workflow test fully strict by ensuring distributor profiles/keys and greentic-dev deps are available in CI or by vendoring minimal fixtures.
+- Replace pack helper fallbacks with required binaries in high-confidence environments; consider feature gating stubs.

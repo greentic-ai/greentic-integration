@@ -1,0 +1,45 @@
+---
+source: crates/app/tests/e2e_greentic_dev_snapshot.rs
+expression: snap_pack_yaml
+---
+{
+  "assets": [],
+  "components": [
+    {
+      "capabilities": {
+        "host": {},
+        "wasi": {}
+      },
+      "id": "snap-pack.component",
+      "profiles": {
+        "default": "default",
+        "supported": [
+          "default"
+        ]
+      },
+      "supports": [
+        "messaging"
+      ],
+      "version": "0.1.0",
+      "wasm": "components/stub.wasm",
+      "world": "greentic:component/stub"
+    }
+  ],
+  "dependencies": [],
+  "flows": [
+    {
+      "entrypoints": [
+        "default"
+      ],
+      "file": "flows/main.ygtc",
+      "id": "main",
+      "tags": [
+        "default"
+      ]
+    }
+  ],
+  "kind": "application",
+  "pack_id": "snap-pack",
+  "publisher": "Greentic",
+  "version": "0.1.0"
+}

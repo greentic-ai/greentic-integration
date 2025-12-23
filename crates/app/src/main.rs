@@ -25,8 +25,8 @@ use semver::Version;
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 use std::time::Duration;
-use tokio::{net::TcpListener, signal, sync::mpsc, task::JoinSet, time::sleep};
-use tracing::{error, info, warn};
+use tokio::{net::TcpListener, signal, sync::mpsc, task::JoinSet};
+use tracing::{error, info, trace, warn};
 use uuid::Uuid;
 
 use crate::deployment::{
@@ -281,12 +281,12 @@ struct SeedDefaults {
     team: Option<String>,
 }
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, Serialize)]
 struct PackIndex {
     entries: Vec<PackEntry>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 struct PackEntry {
     id: String,
     name: Option<String>,
@@ -329,6 +329,8 @@ struct StoreConfig {
     backend: StoreBackend,
     redis_url: Option<String>,
     #[serde(default)]
+    redis_prefix: Option<String>,
+    #[serde(default)]
     file_path: Option<Utf8PathBuf>,
 }
 
@@ -337,6 +339,7 @@ impl StoreConfig {
         Self {
             backend: StoreBackend::Memory,
             redis_url: None,
+            redis_prefix: None,
             file_path: None,
         }
     }
@@ -345,6 +348,7 @@ impl StoreConfig {
         Self {
             backend: StoreBackend::File,
             redis_url: None,
+            redis_prefix: None,
             file_path: Some(path),
         }
     }
@@ -517,8 +521,13 @@ async fn serve(args: ServeArgs) -> Result<()> {
     let pack_index = Arc::new(RwLock::new(build_pack_index(&config.packs)?));
     let runner_events = Arc::new(RwLock::new(Vec::new()));
     let (runner_tx, runner_rx) = mpsc::unbounded_channel();
-    let runner_proxy = RunnerHostProxy::new(runner_tx);
-    tokio::spawn(proxy_runner_loop(runner_rx, runner_events.clone()));
+    let runner_base = runner_proxy_base_from_env();
+    let runner_proxy = RunnerHostProxy::new(runner_tx, runner_base.clone());
+    tokio::spawn(proxy_runner_loop(
+        runner_rx,
+        runner_events.clone(),
+        runner_base,
+    ));
     let state = AppState {
         config: config.clone(),
         session_store: session_store.clone(),
@@ -539,9 +548,6 @@ async fn serve(args: ServeArgs) -> Result<()> {
         "pack index loaded"
     );
     info!(?config, watch = args.watch, "starting integration server");
-    if args.watch {
-        warn!("pack watch mode is not implemented yet; continuing without file watching");
-    }
 
     runner_proxy.submit(RunnerCommand::ReloadPacks {
         packs: pack_index.read().clone(),
@@ -725,7 +731,8 @@ fn build_session_store(config: &StoreConfig) -> Result<SharedSessionStore> {
                 .redis_url
                 .as_deref()
                 .ok_or_else(|| anyhow!("redis backend requires redis_url"))?;
-            bail!("Redis backend not supported yet (url: {url})");
+            let store = crate::session::RedisSessionStore::new(url, config.redis_prefix.clone())?;
+            Ok(store as SharedSessionStore)
         }
     }
 }
@@ -780,6 +787,7 @@ async fn watch_packs(pack_root: Utf8PathBuf, state: AppState) -> Result<()> {
     let mut watcher: RecommendedWatcher =
         recommended_watcher(move |res: Result<Event, notify::Error>| match res {
             Ok(event) => {
+                trace!(?event, "pack watcher event");
                 let _ = tx.send(event);
             }
             Err(err) => warn!(?err, "pack watcher error"),
@@ -790,17 +798,21 @@ async fn watch_packs(pack_root: Utf8PathBuf, state: AppState) -> Result<()> {
         .watch(pack_root.as_std_path(), RecursiveMode::Recursive)
         .with_context(|| format!("failed to watch {pack_root}"))?;
 
-    let mut debounce = Duration::from_secs(0);
+    info!(root = %pack_root, "pack watcher started");
+    let mut last_reload: Option<std::time::Instant> = None;
     while let Some(_event) = rx.recv().await {
         let now = std::time::Instant::now();
-        if debounce > Duration::ZERO && now.elapsed() < debounce {
+        if let Some(prev) = last_reload
+            && now.duration_since(prev) < Duration::from_millis(500)
+        {
             continue;
         }
-        debounce = Duration::from_secs(1);
+        last_reload = Some(now);
         if let Err(err) = reload_packs(&state) {
             warn!(?err, "pack reload failed");
+        } else {
+            info!("pack index reloaded after change");
         }
-        sleep(Duration::from_millis(500)).await;
     }
 
     Ok(())
@@ -1371,12 +1383,33 @@ fn init_tracing() {
 #[allow(dead_code)]
 struct RunnerHostProxy {
     tx: mpsc::UnboundedSender<RunnerCommand>,
+    runner_base: Option<String>,
+}
+
+fn runner_proxy_base_from_env() -> Option<String> {
+    std::env::var("RUNNER_PROXY_URL")
+        .ok()
+        .or_else(|| std::env::var("GREENTIC_RUNNER_URL").ok())
+}
+
+fn send_runner_request(base: &str, path: &str, payload: Value) -> Result<()> {
+    let url = format!("{}/{}", base.trim_end_matches('/'), path);
+    match ureq::post(&url).send_json(payload) {
+        Ok(resp) => {
+            let status = resp.status().as_u16();
+            if status >= 400 {
+                bail!("runner request to {} failed with status {}", url, status);
+            }
+            Ok(())
+        }
+        Err(err) => bail!("runner request to {} failed: {}", url, err),
+    }
 }
 
 impl RunnerHostProxy {
     #[allow(dead_code)]
-    fn new(tx: mpsc::UnboundedSender<RunnerCommand>) -> Self {
-        Self { tx }
+    fn new(tx: mpsc::UnboundedSender<RunnerCommand>, runner_base: Option<String>) -> Self {
+        Self { tx, runner_base }
     }
 
     #[allow(dead_code)]
@@ -1407,11 +1440,18 @@ enum RunnerCommand {
 async fn proxy_runner_loop(
     mut rx: mpsc::UnboundedReceiver<RunnerCommand>,
     events: SharedRunnerEvents,
+    runner_base: Option<String>,
 ) {
     while let Some(cmd) = rx.recv().await {
         match cmd {
             RunnerCommand::Emit(message) => {
                 info!(%message, "runner proxy emit");
+                if let Some(base) = &runner_base
+                    && let Err(err) =
+                        send_runner_request(base, "runner/emit", json!({ "message": message }))
+                {
+                    warn!(?err, "runner proxy emit forward failed");
+                }
             }
             RunnerCommand::ReloadPacks { packs, defaults } => {
                 info!(
@@ -1420,13 +1460,22 @@ async fn proxy_runner_loop(
                     default_team = ?defaults.team,
                     "runner proxy reload packs"
                 );
-                for pack in packs.entries {
+                for pack in &packs.entries {
                     info!(
                         pack_id = %pack.id,
                         pack_name = ?pack.name,
                         path = %pack.path,
                         "runner proxy indexed pack"
                     );
+                }
+                if let Some(base) = &runner_base {
+                    let payload = json!({
+                        "packs": packs.entries,
+                        "defaults": defaults,
+                    });
+                    if let Err(err) = send_runner_request(base, "runner/reload", payload) {
+                        warn!(?err, "runner proxy reload forward failed");
+                    }
                 }
             }
             RunnerCommand::EmitActivity {
@@ -1439,14 +1488,30 @@ async fn proxy_runner_loop(
                 let event = synthesize_runner_event(flow, tenant, team, user, payload);
                 record_runner_event(&events, event.clone());
                 info!(
-                    flow = %event.flow,
-                    tenant = ?event.tenant,
-                    team = ?event.team,
-                    user = ?event.user,
+                flow = %event.flow,
+                tenant = ?event.tenant,
+                team = ?event.team,
+                user = ?event.user,
                     payload = %event.payload,
                     result = %event.result,
                     "runner proxy emit activity"
                 );
+                if let Some(base) = &runner_base
+                    && let Err(err) = send_runner_request(
+                        base,
+                        "runner/activity",
+                        json!({
+                            "flow": event.flow,
+                            "tenant": event.tenant,
+                            "team": event.team,
+                            "user": event.user,
+                            "payload": event.payload,
+                            "result": event.result,
+                        }),
+                    )
+                {
+                    warn!(?err, "runner proxy activity forward failed");
+                }
             }
         }
     }
@@ -1517,9 +1582,10 @@ fn reload_packs(state: &AppState) -> Result<()> {
 fn runner_emit_cli(args: RunnerEmitArgs) -> Result<()> {
     let config = load_config(None)?;
     let (tx, rx) = mpsc::unbounded_channel();
-    let proxy = RunnerHostProxy::new(tx);
+    let runner_base = runner_proxy_base_from_env();
+    let proxy = RunnerHostProxy::new(tx, runner_base.clone());
     let events: SharedRunnerEvents = Arc::new(RwLock::new(Vec::new()));
-    tokio::spawn(proxy_runner_loop(rx, events.clone()));
+    tokio::spawn(proxy_runner_loop(rx, events.clone(), runner_base));
 
     let payload = args
         .payload
@@ -1663,9 +1729,9 @@ mod app_tests {
         let pack_index = Arc::new(RwLock::new(PackIndex::default()));
         let runner_events = Arc::new(RwLock::new(Vec::new()));
         let (tx, rx) = mpsc::unbounded_channel();
-        let proxy = RunnerHostProxy::new(tx);
+        let proxy = RunnerHostProxy::new(tx, None);
 
-        tokio::spawn(proxy_runner_loop(rx, runner_events.clone()));
+        tokio::spawn(proxy_runner_loop(rx, runner_events.clone(), None));
 
         session_store
             .upsert(SessionUpsert {
@@ -1882,8 +1948,8 @@ mod app_tests {
         let pack_index = Arc::new(RwLock::new(PackIndex::default()));
         let runner_events = Arc::new(RwLock::new(Vec::new()));
         let (tx, rx) = mpsc::unbounded_channel();
-        let proxy = RunnerHostProxy::new(tx);
-        tokio::spawn(proxy_runner_loop(rx, runner_events.clone()));
+        let proxy = RunnerHostProxy::new(tx, None);
+        tokio::spawn(proxy_runner_loop(rx, runner_events.clone(), None));
 
         AppState {
             config,

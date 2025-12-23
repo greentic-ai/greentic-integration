@@ -1,0 +1,23 @@
+---
+source: crates/app/tests/e2e_greentic_dev_snapshot.rs
+expression: snap_flow_main
+---
+{
+  "description": "Minimal starter flow",
+  "id": "main",
+  "nodes": {
+    "start": {
+      "routing": [
+        {
+          "out": true
+        }
+      ],
+      "templating.handlebars": {
+        "text": "Hello from greentic-pack starter!"
+      }
+    }
+  },
+  "start": "start",
+  "title": "Welcome",
+  "type": "messaging"
+}
