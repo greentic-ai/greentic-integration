@@ -27,6 +27,8 @@ require_cmd jq
 require_cmd sha256sum
 require_cmd tar
 
+GITHUB_TOKEN="${GREENTIC_GITHUB_TOKEN:-${GITHUB_TOKEN:-}}"
+
 declare -a auth_args=()
 [[ -n "${GITHUB_TOKEN:-}" ]] && auth_args=(-H "Authorization: Bearer ${GITHUB_TOKEN}")
 
