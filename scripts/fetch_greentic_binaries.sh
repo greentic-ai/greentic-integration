@@ -27,8 +27,17 @@ require_cmd jq
 require_cmd sha256sum
 require_cmd tar
 
-auth_args=()
+declare -a auth_args=()
 [[ -n "${GITHUB_TOKEN:-}" ]] && auth_args=(-H "Authorization: Bearer ${GITHUB_TOKEN}")
+
+curl_auth() {
+  # Expand auth_args only when set to avoid empty args under nounset.
+  if [[ ${#auth_args[@]} -gt 0 ]]; then
+    curl -fsSL "${auth_args[@]}" "$@"
+  else
+    curl -fsSL "$@"
+  fi
+}
 
 resolve_latest() {
   local repo="$1" binary="$2" tag="$3"
@@ -39,8 +48,8 @@ resolve_latest() {
     api="${api}/latest"
   fi
   local release
-  if ! release=$(curl -fsSL "${auth_args[@]}" "$api"); then
-    echo "ERROR: failed to fetch release info for ${repo} (tag=${tag})" >&2
+  if ! release=$(curl_auth "$api"); then
+    echo "ERROR: failed to fetch release info for ${repo} (tag=${tag}); ensure GITHUB_TOKEN can access ${OWNER}/${repo} or provide explicit URLs." >&2
     return 1
   fi
   local resolved_tag
@@ -59,7 +68,15 @@ resolve_latest() {
 download_and_verify() {
   local binary="$1" repo="$2" tag_var="$3" url_override="$4" sha_override="$5"
 
-  local resolved_tag asset_name asset_url sums_name sums_url
+  local dest_bin="$BIN_DIR/${binary}"
+  if [[ -x "$dest_bin" ]]; then
+    echo "Found existing ${dest_bin}; skipping download"
+    echo "${binary} preexisting" >> "$BIN_DIR/resolved_versions.txt"
+    return
+  fi
+
+  local resolved_tag asset_name asset_url sums_name sums_url env_prefix resolved_output
+  env_prefix="$(echo "${binary//-/_}" | tr '[:lower:]' '[:upper:]')"
   if [[ -n "$url_override" && -n "$sha_override" ]]; then
     asset_name="$(basename "$url_override")"
     asset_url="$url_override"
@@ -68,7 +85,16 @@ download_and_verify() {
     resolved_tag="${!tag_var:-override}"
   else
     local tag="${!tag_var:-latest}"
-    read -r resolved_tag asset_name asset_url sums_name sums_url < <(resolve_latest "$repo" "$binary" "$tag")
+    if ! resolved_output=$(resolve_latest "$repo" "$binary" "$tag"); then
+      echo "ERROR: could not resolve ${binary} (repo=${repo}, tag=${tag})." >&2
+      echo "Hint: set ${env_prefix}_URL and ${env_prefix}_SHA256, or drop the binary at ${dest_bin}." >&2
+      if [[ "$strict" == "1" ]]; then
+        exit 1
+      fi
+      echo "Skipping ${binary} because strict mode is off." >&2
+      return
+    fi
+    read -r resolved_tag asset_name asset_url sums_name sums_url <<< "$resolved_output"
   fi
 
   if [[ -z "${asset_url:-}" ]]; then
@@ -82,7 +108,7 @@ download_and_verify() {
 
   local download_path="$BIN_DIR/${asset_name}"
   echo "Downloading ${binary} (${resolved_tag}) from ${asset_url}"
-  curl -fsSL "${auth_args[@]}" "$asset_url" -o "$download_path"
+  curl_auth "$asset_url" -o "$download_path"
 
   if [[ -n "$sha_override" ]]; then
     echo "Verifying SHA256 (override) for ${binary}"
@@ -90,7 +116,7 @@ download_and_verify() {
   elif [[ -n "${sums_url:-}" ]]; then
     echo "Fetching checksums ${sums_url}"
     local sums_path="$BIN_DIR/${sums_name}"
-    curl -fsSL "${auth_args[@]}" "$sums_url" -o "$sums_path"
+    curl_auth "$sums_url" -o "$sums_path"
     (cd "$BIN_DIR" && sha256sum -c "$sums_name" --ignore-missing)
   else
     if [[ "$strict" == "1" ]]; then
@@ -101,7 +127,6 @@ download_and_verify() {
   fi
 
   # Extract if tarball, else copy
-  local dest_bin="$BIN_DIR/${binary}"
   if [[ "$download_path" == *.tar.gz || "$download_path" == *.tgz ]]; then
     echo "Extracting ${download_path}"
     tar -xzf "$download_path" -C "$BIN_DIR"
