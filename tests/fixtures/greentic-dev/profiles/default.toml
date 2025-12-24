@@ -1,6 +1,10 @@
 [distributor]
-default_profile = { name = "default", kind = "pack", store = { kind = "local", path = "__STORE_PATH__" } }
+default_profile = "default"
 
 [distributor.profiles.default]
 kind = "pack"
 store = { kind = "local", path = "__STORE_PATH__" }
+
+# Compatibility: some greentic-dev builds expect top-level profiles table.
+[profiles]
+default = { kind = "pack", store = { kind = "local", path = "__STORE_PATH__" } }

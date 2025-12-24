@@ -595,7 +595,7 @@ checksum = "2a2330da5de22e8a3cb63252ce2abb30116bf5265e89c0e01bc17015ce30a476"
 
 [[package]]
 name = "deploy-plan-component"
-version = "0.4.6"
+version = "0.4.7"
 dependencies = [
  "greentic-interfaces-guest",
  "serde_json",
@@ -933,7 +933,7 @@ dependencies = [
 
 [[package]]
 name = "greentic-integration"
-version = "0.4.6"
+version = "0.4.7"
 dependencies = [
  "anyhow",
  "async-nats",
@@ -1843,7 +1843,7 @@ dependencies = [
 
 [[package]]
 name = "providers-sim"
-version = "0.4.6"
+version = "0.4.7"
 dependencies = [
  "hex",
  "serde",
@@ -2048,7 +2048,7 @@ dependencies = [
 
 [[package]]
 name = "runner-smoke"
-version = "0.4.6"
+version = "0.4.7"
 dependencies = [
  "anyhow",
  "serde",
@@ -2280,15 +2280,15 @@ dependencies = [
 
 [[package]]
 name = "serde_json"
-version = "1.0.146"
+version = "1.0.147"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "217ca874ae0207aac254aa02c957ded05585a90892cc8d87f9e5fa49669dadd8"
+checksum = "6af14725505314343e673e9ecb7cd7e8a36aa9791eb936235a3567cc31447ae4"
 dependencies = [
  "itoa",
  "memchr",
- "ryu",
  "serde",
  "serde_core",
+ "zmij",
 ]
 
 [[package]]
@@ -2570,9 +2570,9 @@ dependencies = [
 
 [[package]]
 name = "tempfile"
-version = "3.23.0"
+version = "3.24.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2d31c77bdf42a745371d260a26ca7163f1e0924b64afa0b688e61b5a9fa02f16"
+checksum = "655da9c7eb6305c55742045d5a8d2037996d61d8de95806335c7c86ce0f82e9c"
 dependencies = [
  "fastrand",
  "getrandom 0.3.4",
@@ -3743,3 +3743,9 @@ dependencies = [
  "quote",
  "syn",
 ]
+
+[[package]]
+name = "zmij"
+version = "0.1.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9e404bcd8afdaf006e529269d3e85a743f9480c3cef60034d77860d02964f3ba"

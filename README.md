@@ -203,6 +203,11 @@ cargo test -p greentic-integration e2e_multi_tenant_isolation
 
 Pack helpers look for binaries under `tests/bin/`, `target/{release,debug}/`, or PATH and stub when unavailable, writing artifacts to `target/e2e/<test>/artifacts/`.
 
+Messaging/provider E2E (`e2e_messaging_provider`):
+- Brings up the compose stack (NATS + Postgres), publishes inbound messages over NATS, captures outbound payloads via a stub HTTP provider sink, and asserts text/thread continuity plus AdaptiveCard preservation.
+- Artifacts land under `target/e2e/<test>/artifacts/provider-e2e/<case>/outbound.json`.
+- Skips locally when Docker is unavailable; set `E2E_REQUIRE_DOCKER=1` to fail instead of skipping (CI sets this).
+
 Greentic stack boot (runner/deployer/store) uses locally available binaries (looked up under
 `tests/bin/`, `target/{release,debug}/`, or PATH). The stack test will skip if binaries are
 missing:

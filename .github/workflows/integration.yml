@@ -66,6 +66,29 @@ jobs:
       - name: Runner smoke harness
         run: make runner.smoke
 
+  messaging-provider:
+    runs-on: ubuntu-latest
+    needs:
+      - harness
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+      - name: Cache cargo builds
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+      - name: Messaging/provider E2E
+        env:
+          E2E_REQUIRE_DOCKER: "1"
+        run: cargo test -p greentic-integration --test e2e_messaging_provider -- --nocapture
+
   webchat:
     runs-on: ubuntu-latest
     needs:

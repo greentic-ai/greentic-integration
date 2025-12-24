@@ -6,6 +6,14 @@ use anyhow::{Context, Result};
 use pathdiff::diff_paths;
 use serde_yaml_bw::{Mapping, Sequence, Value};
 use std::env;
+use std::io::{Read, Write};
+use std::net::{TcpListener, TcpStream};
+use std::sync::{
+    Arc,
+    atomic::{AtomicBool, Ordering},
+};
+use std::thread;
+use std::time::Duration;
 use tempfile::tempdir;
 use walkdir::WalkDir;
 use which::which;
@@ -65,6 +73,30 @@ fn pr13_greentic_dev_component_pack_flow() -> Result<()> {
         fs::create_dir_all(parent)?;
     }
     fs::write(&home_config, &config_contents)?;
+    // Some builds may still look for ~/.config/greentic/config.toml; mirror there as well.
+    let legacy_home_config = home_dir.join(".config/greentic/config.toml");
+    if let Some(parent) = legacy_home_config.parent() {
+        fs::create_dir_all(parent)?;
+    }
+    fs::write(&legacy_home_config, &config_contents)?;
+    // greentic-dev config subcommands operate on ~/.greentic/config.toml; mirror with legacy shape.
+    let dot_greentic_config = home_dir.join(".greentic/config.toml");
+    if let Some(parent) = dot_greentic_config.parent() {
+        fs::create_dir_all(parent)?;
+    }
+    let legacy_config = r#"[distributor]
+default_profile = { name = "default", kind = "pack", store = { kind = "local", path = "__STORE_PATH__" } }
+
+[distributor.profiles.default]
+kind = "pack"
+store = { kind = "local", path = "__STORE_PATH__" }
+"#
+    .replace("__STORE_PATH__", store_path.to_str().unwrap());
+    fs::write(&dot_greentic_config, &legacy_config)?;
+    println!(
+        "greentic-dev config contents:\n{}",
+        config_contents.replace("__STORE_PATH__", "<store>")
+    );
     println!(
         "greentic-dev config at {} (and {})",
         config_path.display(),
@@ -166,6 +198,10 @@ fn pr13_greentic_dev_component_pack_flow() -> Result<()> {
         .canonicalize()
         .context("locate built wasm")?;
 
+    // Some greentic-dev builds resolve components via a distributor API on localhost:8080; provide
+    // a minimal stub so the test stays offline-friendly.
+    let _stub = DistributorStub::start("127.0.0.1:8080", built_wasm.to_string_lossy().to_string());
+
     // 2) Scaffold pack.
     let pack_dir = work.join("demo-pack");
     run_cmd(
@@ -202,7 +238,7 @@ fn pr13_greentic_dev_component_pack_flow() -> Result<()> {
     let coordinate = format!("repo://{coord_id}@{coord_ver}");
 
     // 3) Insert new component into flow via add-step.
-    // Try to insert new component into flow; tolerate missing distributor profile by skipping.
+    // Insert new component into flow; must succeed.
     let add_output = Command::new(&greentic_dev)
         .args([
             "flow",
@@ -223,18 +259,11 @@ fn pr13_greentic_dev_component_pack_flow() -> Result<()> {
         .context("flow add-step failed to spawn")?;
     if !add_output.status.success() {
         let stderr = String::from_utf8_lossy(&add_output.stderr);
-        if stderr.contains("distributor profile") {
-            eprintln!("skipping flow add-step due to missing profile:\n{stderr}");
-            if strict {
-                eprintln!("strict mode: treating missing profile as skip");
-            }
-        } else {
-            anyhow::bail!(
-                "flow add-step failed: {:?}\nstderr:\n{}",
-                add_output.status.code(),
-                stderr
-            );
-        }
+        anyhow::bail!(
+            "flow add-step failed: {:?}\nstderr:\n{}",
+            add_output.status.code(),
+            stderr
+        );
     }
 
     // 4) Build + validate pack.
@@ -633,4 +662,80 @@ fn packc_supports_allow_unsigned(packc: &Path, envs: &[(String, String)]) -> Res
     let stdout = String::from_utf8_lossy(&help.stdout);
     let stderr = String::from_utf8_lossy(&help.stderr);
     Ok(stdout.contains("allow-unsigned") || stderr.contains("allow-unsigned"))
+}
+
+struct DistributorStub {
+    stop: Arc<AtomicBool>,
+    handle: Option<thread::JoinHandle<()>>,
+}
+
+impl DistributorStub {
+    fn start(addr: &str, artifact_path: String) -> Option<Self> {
+        let listener = TcpListener::bind(addr).ok()?;
+        listener.set_nonblocking(true).ok()?;
+
+        let stop = Arc::new(AtomicBool::new(false));
+        let handle = {
+            let stop = stop.clone();
+            thread::spawn(move || {
+                Self::serve(listener, stop, artifact_path);
+            })
+        };
+
+        Some(Self {
+            stop,
+            handle: Some(handle),
+        })
+    }
+
+    fn serve(listener: TcpListener, stop: Arc<AtomicBool>, artifact_path: String) {
+        while !stop.load(Ordering::SeqCst) {
+            match listener.accept() {
+                Ok((mut stream, _)) => {
+                    Self::handle_conn(&mut stream, &artifact_path);
+                }
+                Err(err) if err.kind() == std::io::ErrorKind::WouldBlock => {
+                    thread::sleep(Duration::from_millis(25));
+                }
+                Err(_) => break,
+            }
+        }
+    }
+
+    fn handle_conn(stream: &mut TcpStream, artifact_path: &str) {
+        let mut buf = [0u8; 4096];
+        // Read whatever fits; ignore the body since we only need to respond.
+        let _ = stream.read(&mut buf);
+
+        let body = serde_json::json!({
+            "status": "ready",
+            "digest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+            "artifact": { "kind": "file_path", "path": artifact_path },
+            "signature": { "verified": true, "signer": "stub", "extra": {} },
+            "cache": {
+                "size_bytes": 0,
+                "last_used_utc": "1970-01-01T00:00:00Z",
+                "last_refreshed_utc": "1970-01-01T00:00:00Z"
+            },
+            "secret_requirements": []
+        })
+        .to_string();
+
+        let response = format!(
+            "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",
+            body.len(),
+            body
+        );
+        let _ = stream.write_all(response.as_bytes());
+        let _ = stream.flush();
+    }
+}
+
+impl Drop for DistributorStub {
+    fn drop(&mut self) {
+        self.stop.store(true, Ordering::SeqCst);
+        if let Some(handle) = self.handle.take() {
+            let _ = handle.join();
+        }
+    }
 }

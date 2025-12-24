@@ -82,6 +82,9 @@ impl TestEnv {
             shutdown: false,
         };
 
+        // Best effort cleanup in case a previous run crashed and left containers behind.
+        let _ = env.compose_down();
+
         env.append_log("starting compose stack")?;
         env.compose_up()?;
         env.wait_for_ports().await?;
