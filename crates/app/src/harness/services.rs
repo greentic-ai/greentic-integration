@@ -92,8 +92,29 @@ pub struct TestStack {
 
 impl TestStack {
     pub async fn healthcheck(&mut self, logs_dir: &Path) -> Result<()> {
-        self.runner.ensure_running()?;
-        wait_for_port("runner", RUNNER_PORT, logs_dir, Duration::from_secs(20)).await?;
+        let start = Instant::now();
+        let timeout = Duration::from_secs(20);
+        let addr = format!("127.0.0.1:{RUNNER_PORT}");
+        loop {
+            self.runner.ensure_running()?;
+            match TcpStream::connect(&addr).await {
+                Ok(_) => {
+                    write_probe(logs_dir, "runner", "port open")?;
+                    break;
+                }
+                Err(err) => {
+                    if start.elapsed() > timeout {
+                        bail!(
+                            "runner did not open port {} in time: {} (log: {})",
+                            addr,
+                            err,
+                            self.runner.log_path().display()
+                        );
+                    }
+                    sleep(Duration::from_millis(250)).await;
+                }
+            }
+        }
         Ok(())
     }
 
