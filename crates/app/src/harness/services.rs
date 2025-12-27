@@ -144,6 +144,12 @@ pub async fn boot_stack(env: &crate::harness::TestEnv) -> Result<TestStack, Stac
         });
     }
     let runner_bin = runner_bin.unwrap();
+    if !is_binary_compatible(&runner_bin) {
+        return Err(StackError::MissingBinary {
+            name: "greentic-runner",
+            searched: binary_candidates("greentic-runner"),
+        });
+    }
 
     let config_dir = env.root().join("config");
     fs::create_dir_all(&config_dir).map_err(|e| StackError::Startup(e.into()))?;
@@ -170,6 +176,27 @@ fn locate_binary(name: &str) -> Option<PathBuf> {
     binary_candidates(name)
         .into_iter()
         .find(|candidate| candidate.exists())
+}
+
+fn is_binary_compatible(path: &Path) -> bool {
+    // Quick compatibility guard: skip Linux-specific test binaries on non-Linux hosts.
+    if std::env::consts::OS != "linux"
+        && let Some(p) = path.to_str()
+        && (p.contains("linux-x86_64") || p.contains("linux"))
+    {
+        return false;
+    }
+    // Ensure the binary is executable.
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        if let Ok(meta) = fs::metadata(path)
+            && meta.permissions().mode() & 0o111 == 0
+        {
+            return false;
+        }
+    }
+    true
 }
 
 fn binary_candidates(name: &str) -> Vec<PathBuf> {
