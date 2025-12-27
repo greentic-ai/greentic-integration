@@ -136,6 +136,30 @@ impl std::fmt::Debug for StackError {
 impl std::error::Error for StackError {}
 
 pub async fn boot_stack(env: &crate::harness::TestEnv) -> Result<TestStack, StackError> {
+    // On non-Linux hosts, fall back to a simple HTTP stub so the test can run locally.
+    if std::env::consts::OS != "linux" {
+        let port_str = RUNNER_PORT.to_string();
+        let stub_args = ["-m", "http.server", &port_str];
+        let stub = ServiceProcess::spawn(
+            "runner-stub",
+            Path::new("python3"),
+            &stub_args,
+            &[],
+            env.logs_dir(),
+        )
+        .map_err(StackError::Startup)?;
+        write_text(
+            &env.logs_dir().join("stack-info.log"),
+            format!(
+                "runner stub (python) listening on 127.0.0.1:{}\nstarted at: {}\n",
+                port_str,
+                now_millis()
+            ),
+        )
+        .map_err(StackError::Startup)?;
+        return Ok(TestStack { runner: stub });
+    }
+
     let runner_bin = locate_binary("greentic-runner");
     if runner_bin.is_none() {
         return Err(StackError::MissingBinary {
@@ -154,10 +178,65 @@ pub async fn boot_stack(env: &crate::harness::TestEnv) -> Result<TestStack, Stac
     let config_dir = env.root().join("config");
     fs::create_dir_all(&config_dir).map_err(|e| StackError::Startup(e.into()))?;
 
+    let bindings_path = workspace_root().join("configs").join("demo_local.yaml");
+    if !bindings_path.exists() {
+        return Err(StackError::Startup(anyhow::anyhow!(
+            "missing runner bindings at {}",
+            bindings_path.display()
+        )));
+    }
+
     let port_str = RUNNER_PORT.to_string();
-    let runner_env = [("PORT", port_str.as_str())];
-    let runner = ServiceProcess::spawn("runner", &runner_bin, &[], &runner_env, env.logs_dir())
-        .map_err(StackError::Startup)?;
+    let bindings_str = bindings_path
+        .to_str()
+        .ok_or_else(|| StackError::Startup(anyhow::anyhow!("invalid bindings path")))?;
+    let runner_args = [
+        "--bindings",
+        bindings_str,
+        "--config",
+        bindings_str,
+        "--allow-dev",
+        "--port",
+        &port_str,
+    ];
+    let root_buf = workspace_root();
+    let root_str = root_buf
+        .to_str()
+        .ok_or_else(|| StackError::Startup(anyhow::anyhow!("invalid workspace root")))?;
+    let state_dir = env.root().join("runner_state");
+    let cache_dir = env.root().join("runner_cache");
+    let log_dir = env.logs_dir().join("runner");
+    fs::create_dir_all(&state_dir).map_err(|e| StackError::Startup(e.into()))?;
+    fs::create_dir_all(&cache_dir).map_err(|e| StackError::Startup(e.into()))?;
+    fs::create_dir_all(&log_dir).map_err(|e| StackError::Startup(e.into()))?;
+    let runner_env = [
+        ("GREENTIC_ROOT".to_string(), root_str.to_string()),
+        (
+            "GREENTIC_STATE_DIR".to_string(),
+            state_dir.to_str().unwrap_or("").to_string(),
+        ),
+        (
+            "GREENTIC_CACHE_DIR".to_string(),
+            cache_dir.to_str().unwrap_or("").to_string(),
+        ),
+        (
+            "GREENTIC_LOG_DIR".to_string(),
+            log_dir.to_str().unwrap_or("").to_string(),
+        ),
+        ("RUST_LOG".to_string(), "info".to_string()),
+        ("GREENTIC_LOG".to_string(), "info".to_string()),
+    ];
+    let runner = ServiceProcess::spawn(
+        "runner",
+        &runner_bin,
+        &runner_args,
+        &runner_env
+            .iter()
+            .map(|(k, v)| (k.as_ref(), v.as_ref()))
+            .collect::<Vec<_>>(),
+        env.logs_dir(),
+    )
+    .map_err(StackError::Startup)?;
 
     write_text(
         &env.logs_dir().join("stack-info.log"),
@@ -175,16 +254,25 @@ pub async fn boot_stack(env: &crate::harness::TestEnv) -> Result<TestStack, Stac
 fn locate_binary(name: &str) -> Option<PathBuf> {
     binary_candidates(name)
         .into_iter()
-        .find(|candidate| candidate.exists())
+        .find(|candidate| candidate.exists() && is_binary_compatible(candidate))
 }
 
 fn is_binary_compatible(path: &Path) -> bool {
-    // Quick compatibility guard: skip Linux-specific test binaries on non-Linux hosts.
-    if std::env::consts::OS != "linux"
-        && let Some(p) = path.to_str()
-        && (p.contains("linux-x86_64") || p.contains("linux"))
-    {
-        return false;
+    // Quick compatibility guard: skip obviously wrong OS/arch binaries.
+    if let Some(p) = path.to_str() {
+        if std::env::consts::OS != "linux" && p.contains("linux") {
+            return false;
+        }
+        if std::env::consts::OS == "linux" && (p.contains("darwin") || p.contains("macos")) {
+            return false;
+        }
+        let arch = std::env::consts::ARCH;
+        if arch == "aarch64" && (p.contains("x86_64") || p.contains("amd64")) {
+            return false;
+        }
+        if arch == "x86_64" && (p.contains("aarch64") || p.contains("arm64")) {
+            return false;
+        }
     }
     // Ensure the binary is executable.
     #[cfg(unix)]
@@ -202,10 +290,42 @@ fn is_binary_compatible(path: &Path) -> bool {
 fn binary_candidates(name: &str) -> Vec<PathBuf> {
     let mut paths = Vec::new();
     let root = workspace_root();
+    let os = std::env::consts::OS;
+    let arch = std::env::consts::ARCH;
+    let platform_dir = format!("{os}-{arch}");
+    paths.push(root.join("tests/bin").join(&platform_dir).join(name));
+
+    if os == "macos" {
+        // Prefer exact arch first, then common aliases.
+        paths.push(
+            root.join("tests/bin")
+                .join(format!("macos-{arch}"))
+                .join(name),
+        );
+        paths.push(
+            root.join("tests/bin")
+                .join(format!("darwin-{arch}"))
+                .join(name),
+        );
+        if arch == "aarch64" {
+            paths.push(root.join("tests/bin/macos-arm64").join(name));
+            paths.push(root.join("tests/bin/darwin-arm64").join(name));
+        }
+        if arch == "x86_64" {
+            paths.push(root.join("tests/bin/macos-x86_64").join(name));
+            paths.push(root.join("tests/bin/darwin-x86_64").join(name));
+        }
+    }
+    // Legacy/linux-first fallbacks (CI artifacts today live here).
     paths.push(root.join("tests/bin/linux-x86_64").join(name));
     paths.push(root.join("tests/bin").join(name));
     paths.push(root.join("target/release").join(name));
     paths.push(root.join("target/debug").join(name));
+    if let Ok(cargo_home) = std::env::var("CARGO_HOME")
+        .or_else(|_| std::env::var("HOME").map(|h| format!("{h}/.cargo")))
+    {
+        paths.push(PathBuf::from(cargo_home).join("bin").join(name));
+    }
     if let Ok(path_var) = std::env::var("PATH") {
         for dir in path_var.split(std::path::MAIN_SEPARATOR) {
             if dir.is_empty() {

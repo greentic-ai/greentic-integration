@@ -1,9 +1,14 @@
 use greentic_integration::harness::{StackError, TestEnv};
+use std::thread;
+use std::time::Duration;
 
 #[tokio::test]
 async fn e2e_stack_boot() -> anyhow::Result<()> {
     if !greentic_integration::harness::docker_available() {
-        eprintln!("skipping e2e_stack_boot: docker daemon not available");
+        eprintln!(
+            "docker daemon not available; skipping stack dependencies (mac/local dev fallback)"
+        );
+        thread::sleep(Duration::from_millis(100));
         return Ok(());
     }
 
