@@ -326,7 +326,7 @@ fn eval_cbor_path(value: &CborValue, segments: &[PathSegment]) -> Vec<CborValue>
                 }
                 PathSegment::IndexWildcard => {
                     if let CborValue::Array(array) = item {
-                        next.extend(array.into_iter());
+                        next.extend(array);
                     }
                 }
             }
