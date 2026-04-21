@@ -1,10 +1,10 @@
 name: E2E
 
 on:
-  pull_request:
   workflow_dispatch:
   schedule:
     - cron: "0 3 * * *"
+  # pull_request: removed per plans/binary-bifurcation.md Phase A heavy-job sweep
 
 permissions:
   contents: read

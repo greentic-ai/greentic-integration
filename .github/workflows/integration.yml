@@ -8,12 +8,10 @@ on:
   push:
     branches:
       - main
-  pull_request:
-    branches:
-      - main
   schedule:
     - cron: "0 5 * * *"
   workflow_dispatch:
+  # pull_request: removed per plans/binary-bifurcation.md Phase A heavy-job sweep
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
