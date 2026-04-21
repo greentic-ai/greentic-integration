@@ -90,10 +90,10 @@ jobs:
         uses: ./.github/actions/ci-setup
       - name: Install greentic CLIs
         run: |
-          cargo binstall greentic-pack --no-confirm --force
-          cargo binstall greentic-component --no-confirm --force
-          cargo binstall greentic-flow --no-confirm --force
-          cargo binstall greentic-runner --no-confirm --force
+          cargo binstall greentic-pack --no-confirm --force --locked
+          cargo binstall greentic-component --no-confirm --force --locked
+          cargo binstall greentic-flow --no-confirm --force --locked
+          cargo binstall greentic-runner --no-confirm --force --locked
       - name: Run gtest smoke scripts
         run: |
           cargo run -p greentic-integration-tester -- --test tests/gtests/00_smoke_validator.gtest
