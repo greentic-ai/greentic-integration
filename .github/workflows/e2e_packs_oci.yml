@@ -1,15 +1,10 @@
 name: e2e_packs_oci
 
 on:
+  schedule:
+    - cron: "44 3 * * *"
   workflow_dispatch:
-  pull_request:
-    paths:
-      - ".github/workflows/e2e_packs_oci.yml"
-      - "scripts/oci_resolve_digests.sh"
-      - "scripts/make_pack_index.sh"
-      - "tests/packs/**"
-      - "tests/**/*.rs"
-      - "crates/app/tests/**"
+  # pull_request: removed per plans/binary-bifurcation.md Phase A heavy-job sweep
 
 permissions:
   contents: read

@@ -14,27 +14,16 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  fmt:
+  ci:
+    if: github.event_name == 'pull_request'
+    uses: greenticai/.github/.github/workflows/pr-ci.yml@main
+    with:
+      variant: host
+      test-args: "--workspace --all-features --lib --bins"
+  integration-tests:
     runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      - name: Setup tooling
-        uses: ./.github/actions/ci-setup
-      - name: Run fmt
-        run: cargo fmt --all --check
-  clippy:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      - name: Setup tooling
-        uses: ./.github/actions/ci-setup
-      - name: Run clippy
-        run: cargo clippy --all-targets --all-features -- -D warnings
-  test:
-    runs-on: ubuntu-latest
-    needs: [fmt, clippy]
+    needs: [ci]
+    if: github.event_name == 'pull_request'
     env:
       GREENTIC_CONTROL_CHAIN_PATH: vendor/greentic-control-chain
       CONTROL_CHAIN_GH_TOKEN: ${{ secrets.GREENTIC_GITHUB_TOKEN != '' && secrets.GREENTIC_GITHUB_TOKEN || github.token }}
@@ -82,7 +71,8 @@ jobs:
         run: cargo test --all-features
   gtest:
     runs-on: ubuntu-latest
-    needs: [fmt, clippy]
+    needs: [ci]
+    if: github.event_name == 'pull_request'
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -90,10 +80,10 @@ jobs:
         uses: ./.github/actions/ci-setup
       - name: Install greentic CLIs
         run: |
-          cargo binstall greentic-pack --no-confirm --force
-          cargo binstall greentic-component --no-confirm --force
-          cargo binstall greentic-flow --no-confirm --force
-          cargo binstall greentic-runner --no-confirm --force
+          cargo binstall greentic-pack --no-confirm --force --locked
+          cargo binstall greentic-component --no-confirm --force --locked
+          cargo binstall greentic-flow --no-confirm --force --locked
+          cargo binstall greentic-runner --no-confirm --force --locked
       - name: Run gtest smoke scripts
         run: |
           cargo run -p greentic-integration-tester -- --test tests/gtests/00_smoke_validator.gtest
@@ -102,14 +92,13 @@ jobs:
   publish:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
-    needs: [fmt, clippy]
     env:
       CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
       - name: Set up Rust
-        uses: dtolnay/rust-toolchain@stable
+        uses: dtolnay/rust-toolchain@1.94.0
         with:
           toolchain: 1.94.0
       - name: Cache cargo
@@ -143,7 +132,6 @@ jobs:
   release:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ${{ matrix.os }}
-    needs: [fmt, clippy]
     permissions:
       contents: write
     strategy:
@@ -171,7 +159,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
       - name: Set up Rust
-        uses: dtolnay/rust-toolchain@stable
+        uses: dtolnay/rust-toolchain@1.94.0
         with:
           toolchain: 1.94.0
       - name: Cache cargo
