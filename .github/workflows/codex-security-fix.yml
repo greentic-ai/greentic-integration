@@ -1,8 +1,8 @@
 name: Codex Security Fix
 on:
   schedule:
-    # 04:27 UTC — staggered to avoid hot-spots (Wave 2 lighter-PR-CI migration).
-    - cron: "27 4 * * *"
+    # 03:17 UTC — staggered to avoid hot-spots. See plans/binary-bifurcation.md Phase A.7.2.
+    - cron: "17 3 * * *"
   workflow_dispatch:
     inputs:
       branch:
