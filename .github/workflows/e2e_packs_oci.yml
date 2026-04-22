@@ -2,7 +2,7 @@ name: e2e_packs_oci
 
 on:
   schedule:
-    - cron: "28 4 * * *"
+    - cron: "44 3 * * *"
   workflow_dispatch:
   # pull_request: removed per plans/binary-bifurcation.md Phase A heavy-job sweep
 
