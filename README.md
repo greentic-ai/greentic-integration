@@ -208,6 +208,14 @@ Messaging/provider E2E (`e2e_messaging_provider`):
 - Artifacts land under `target/e2e/<test>/artifacts/provider-e2e/<case>/outbound.json`.
 - Skips locally when Docker is unavailable; set `E2E_REQUIRE_DOCKER=1` to fail instead of skipping (CI sets this).
 
+MCP weather smoke (`e2e_mcp_pack_smoke`):
+- Runs in CI with strict failure semantics.
+- Skips by default on local machines; set `GREENTIC_MCP_SMOKE=1` to run it manually.
+- Copies the checked-in `greentic-demo/weather-mcp-demo-bundle` into a temp test root, so it exercises the real demo bundle instead of a synthetic pack-only path.
+- Starts `greentic-start` against that temp bundle and drives the Direct Line-compatible webchat HTTP endpoints.
+- Covers both demo operations: `get_weather` and `get_forecast_weather`, across the capital-city matrix baked into the test.
+- Asserts that the runtime transcript structured payload and the returned Adaptive Card both contain the expected capital city and country markers.
+
 Greentic stack boot (runner/deployer/store) uses locally available binaries (looked up under
 `tests/bin/`, `target/{release,debug}/`, or PATH). The stack test will skip if binaries are
 missing:
