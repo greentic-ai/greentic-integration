@@ -26,10 +26,10 @@ directories = "6"
 flate2 = "1"
 figment = { version = "0.10", features = ["toml", "env"] }
 futures = "0.3"
-greentic-distributor-client = "0.4.41"
-greentic-integration-core = { path = "crates/greentic-integration-core", version = "0.4" }
-greentic-interfaces-guest = { version = "0.4", default-features = false, features = ["component-node"] }
-greentic-types = "0.4"
+greentic-distributor-client = ">=1.1.0-dev, <1.2.0-0"
+greentic-integration-core = { path = "crates/greentic-integration-core", version = ">=1.1.0-dev, <1.2.0-0" }
+greentic-interfaces-guest = { version = ">=1.1.0-dev, <1.2.0-0", default-features = false, features = ["component-node"] }
+greentic-types = ">=1.1.0-dev, <1.2.0-0"
 hex = "0.4"
 humantime = "2"
 insta = "1"
@@ -70,7 +70,7 @@ chrono = { version = "0.4", default-features = false, features = ["clock"] }
 [workspace.package]
 edition = "2024"
 rust-version = "1.94"
-version = "0.4.33"
+version = "1.1.0-dev.0"
 description = "Greentic integration tooling and test runner"
 license = "MIT"
 repository = "https://github.com/greenticai/greentic-integration"
