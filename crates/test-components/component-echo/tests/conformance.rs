@@ -1,5 +1,4 @@
-use component_echo::{describe_payload, handle_message};
-use greentic_interfaces_guest::component::node::InvokeResult;
+use component_echo::{InvokeResult, describe_payload, handle_message};
 use serde_json::Value;
 
 const SAMPLE_MESSAGE: &str = include_str!("../../../../fixtures/inputs/channel_message.json");
