@@ -18,18 +18,12 @@ resolver = "2"
 [workspace.dependencies]
 anyhow = "1"
 async-trait = "0.1.89"
-axum = { version = "0.8", features = ["macros"] }
-camino = { version = "1", features = ["serde1"] }
-clap = { version = "4", features = ["derive"] }
 ciborium = "0.2"
 directories = "6"
 flate2 = "1"
-figment = { version = "0.10", features = ["toml", "env"] }
 futures = "0.3"
-greentic-distributor-client = "0.4.41"
-greentic-integration-core = { path = "crates/greentic-integration-core", version = "0.4" }
-greentic-interfaces-guest = { version = "0.4", default-features = false, features = ["component-node"] }
-greentic-types = "0.4"
+greentic-distributor-client = ">=1.1.0-dev, <1.2.0-0"
+greentic-types = ">=1.1.0-dev, <1.2.0-0"
 hex = "0.4"
 humantime = "2"
 insta = "1"
@@ -39,38 +33,142 @@ parking_lot = "0.12"
 pathdiff = "0.2"
 rayon = "1.10"
 regex = "1"
-redis = { version = "1", features = ["connection-manager", "tokio-comp"] }
-serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 serde_cbor = "0.11"
 serde_with = "3"
-serde_yaml_bw = { package = "serde_yaml_gtc", version = "2.5.2" }
 sha2 = "0.11"
-semver = { version = "1", features = ["serde"] }
 tar = "0.4"
 tempfile = "3"
 thiserror = "2"
-tokio = { version = "1.41", features = ["macros", "rt-multi-thread", "signal"] }
 tokio-postgres = "0.7"
 toml = "1"
 tower = "0.5"
-tracing = { version = "0.1", features = ["log"] }
-tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
-ureq = { version = "3", features = ["json"] }
 urlencoding = "2"
-uuid = { version = "1", features = ["v4", "serde"] }
 walkdir = "2"
 wait-timeout = "0.2"
 which = "8"
-wit-bindgen = { version = "0.55", default-features = false, features = ["macros", "realloc"] }
-zip = { version = "8", default-features = false, features = ["deflate"] }
 zstd = "0.13"
 async-nats = "0.47"
-chrono = { version = "0.4", default-features = false, features = ["clock"] }
+
+[workspace.dependencies.axum]
+version = "0.8"
+features = [
+    "macros",
+]
+
+[workspace.dependencies.camino]
+version = "1"
+features = [
+    "serde1",
+]
+
+[workspace.dependencies.clap]
+version = "4"
+features = [
+    "derive",
+]
+
+[workspace.dependencies.figment]
+version = "0.10"
+features = [
+    "toml",
+    "env",
+]
+
+[workspace.dependencies.greentic-integration-core]
+path = "crates/greentic-integration-core"
+version = ">=1.1.0-dev, <1.2.0-0"
+
+[workspace.dependencies.greentic-interfaces-guest]
+version = ">=1.1.0-dev, <1.2.0-0"
+default-features = false
+features = [
+    "component-node",
+]
+
+[workspace.dependencies.redis]
+version = "1"
+features = [
+    "connection-manager",
+    "tokio-comp",
+]
+
+[workspace.dependencies.serde]
+version = "1"
+features = [
+    "derive",
+]
+
+[workspace.dependencies.serde_yaml_bw]
+package = "serde_yaml_gtc"
+version = "2.5.2"
+
+[workspace.dependencies.semver]
+version = "1"
+features = [
+    "serde",
+]
+
+[workspace.dependencies.tokio]
+version = "1.41"
+features = [
+    "macros",
+    "rt-multi-thread",
+    "signal",
+]
+
+[workspace.dependencies.tracing]
+version = "0.1"
+features = [
+    "log",
+]
+
+[workspace.dependencies.tracing-subscriber]
+version = "0.3"
+features = [
+    "env-filter",
+    "fmt",
+]
+
+[workspace.dependencies.ureq]
+version = "3"
+features = [
+    "json",
+]
+
+[workspace.dependencies.uuid]
+version = "1"
+features = [
+    "v4",
+    "serde",
+]
+
+[workspace.dependencies.wit-bindgen]
+version = "0.55"
+default-features = false
+features = [
+    "macros",
+    "realloc",
+]
+
+[workspace.dependencies.zip]
+version = "8"
+default-features = false
+features = [
+    "deflate",
+]
+
+[workspace.dependencies.chrono]
+version = "0.4"
+default-features = false
+features = [
+    "clock",
+]
+
 [workspace.package]
 edition = "2024"
 rust-version = "1.94"
-version = "0.4.33"
+version = "1.1.0-dev.0"
 description = "Greentic integration tooling and test runner"
 license = "MIT"
 repository = "https://github.com/greenticai/greentic-integration"
