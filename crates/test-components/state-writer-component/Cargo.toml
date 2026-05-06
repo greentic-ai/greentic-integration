@@ -7,5 +7,5 @@ edition = "2024"
 crate-type = ["cdylib"]
 
 [dependencies]
-greentic-interfaces-guest = { workspace = true, default-features = false, features = ["component-node", "state-store"] }
+greentic-interfaces-guest = { workspace = true, default-features = false, features = ["component-v0-6", "state-store"] }
 serde_json = { workspace = true }

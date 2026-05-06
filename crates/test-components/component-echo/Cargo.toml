@@ -18,4 +18,4 @@ serde_cbor = { workspace = true }
 ciborium = { workspace = true }
 sha2 = { workspace = true }
 wit-bindgen = { workspace = true }
-greentic-interfaces-guest = { workspace = true, default-features = false, features = ["component-node"] }
+greentic-interfaces-guest = { workspace = true, default-features = false, features = ["component-v0-6"] }

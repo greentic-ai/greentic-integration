@@ -28,7 +28,7 @@ figment = { version = "0.10", features = ["toml", "env"] }
 futures = "0.3"
 greentic-distributor-client = ">=1.1.0-dev, <1.2.0-0"
 greentic-integration-core = { path = "crates/greentic-integration-core", version = ">=1.1.0-dev, <1.2.0-0" }
-greentic-interfaces-guest = { version = ">=1.1.0-dev, <1.2.0-0", default-features = false, features = ["component-node"] }
+greentic-interfaces-guest = { version = ">=1.1.0-dev, <1.2.0-0", default-features = false, features = ["component-v0-6"] }
 greentic-types = ">=1.1.0-dev, <1.2.0-0"
 hex = "0.4"
 humantime = "2"

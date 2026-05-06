@@ -1,6 +1,24 @@
-use greentic_interfaces_guest::component::node::{InvokeResult, NodeError};
-use greentic_interfaces_guest::component_entrypoint;
 use serde_json::{Value, json};
+
+// Compat types matching the old greentic:component/node@0.5.0 shapes.
+// The published greentic-interfaces-guest >=1.1 removed the 0.5.0 surface
+// (component-node feature → component-v0-6). These test fixtures only need
+// the type definitions for host-side unit tests; WASM export glue is handled
+// separately via wit_bindgen.
+#[derive(Debug)]
+pub enum InvokeResult {
+    Ok(String),
+    Err(NodeError),
+}
+
+#[derive(Debug)]
+pub struct NodeError {
+    pub code: String,
+    pub message: String,
+    pub retryable: bool,
+    pub backoff_ms: Option<u64>,
+    pub details: Option<String>,
+}
 
 #[allow(dead_code)]
 fn manifest() -> String {
@@ -64,4 +82,7 @@ fn invoke(op: String, input: String) -> InvokeResult {
     }
 }
 
-component_entrypoint!({ manifest: manifest, invoke: invoke });
+// NOTE: the old component_entrypoint! macro (0.5.0 ABI glue) was removed
+// from greentic-interfaces-guest >=1.1. WASM export glue for these test
+// fixtures will be revisited when the integration harness migrates to the
+// 0.6.0 invoke contract.
