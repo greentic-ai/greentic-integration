@@ -219,6 +219,15 @@ jobs:
         run: |
           npm ci --prefix webchat-e2e
           PLAYWRIGHT_BROWSERS_PATH=0 npx playwright install chromium firefox
+      - name: Install cargo-binstall and Greentic CLIs
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ! command -v cargo-binstall >/dev/null 2>&1; then
+            curl -sL https://raw.githubusercontent.com/cargo-bins/cargo-binstall/main/install-from-binstall-release.sh | bash
+          fi
+          cargo binstall greentic-dev --no-confirm --force
+          cargo binstall greentic-pack --no-confirm --force
       - name: Run full test suite
         env:
           GREENTIC_PROVIDER_CORE_ONLY: "1"

@@ -23,7 +23,18 @@ mkdir -p "${PACKS_DIR}"
 
 run_step "sync packs to dist/packs" rsync -a "${ROOT_DIR}/packs/" "${PACKS_DIR}/"
 
-run_step "pack doctor" sh -c "greentic-pack doctor --validate --packs \"${PACKS_DIR}\" | tee \"${ARTIFACTS_DIR}/pack_doctor.log\""
+run_step "pack doctor" sh -c '
+  set -eu
+  : > "$1/pack_doctor.log"
+  for pack_dir in "$2"/*/; do
+    if [ -f "${pack_dir}pack.yaml" ] || [ -f "${pack_dir}pack.json" ]; then
+      {
+        printf "=== Pack doctor: %s ===\n" "${pack_dir}"
+        greentic-pack doctor --validate "${pack_dir}"
+      } 2>&1 | tee -a "$1/pack_doctor.log"
+    fi
+  done
+' _ "${ARTIFACTS_DIR}" "${PACKS_DIR}"
 
 for domain in messaging events secrets; do
   case "${domain}" in

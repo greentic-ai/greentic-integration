@@ -70,7 +70,16 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          greentic-pack doctor --validate --packs dist/packs | tee "${ARTIFACTS_DIR}/pack_doctor.log"
+          shopt -s nullglob
+          : > "${ARTIFACTS_DIR}/pack_doctor.log"
+          for pack_dir in dist/packs/*/; do
+            if [[ -f "${pack_dir}pack.yaml" || -f "${pack_dir}pack.json" ]]; then
+              {
+                echo "=== Pack doctor: ${pack_dir} ==="
+                greentic-pack doctor --validate "${pack_dir}"
+              } 2>&1 | tee -a "${ARTIFACTS_DIR}/pack_doctor.log"
+            fi
+          done
 
       - name: Domain conformance (dry-run)
         if: matrix.test-type == 'conformance'
