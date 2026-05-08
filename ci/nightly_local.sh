@@ -27,7 +27,7 @@ run_step "pack doctor" sh -c '
   set -eu
   : > "$1/pack_doctor.log"
   for pack_dir in "$2"/*/; do
-    if [ -f "${pack_dir}pack.yaml" ] || [ -f "${pack_dir}pack.json" ]; then
+    if [ -f "${pack_dir}pack.yaml" ]; then
       {
         printf "=== Pack doctor: %s ===\n" "${pack_dir}"
         greentic-pack doctor --validate "${pack_dir}"

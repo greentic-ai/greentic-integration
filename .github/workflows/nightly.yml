@@ -73,7 +73,7 @@ jobs:
           shopt -s nullglob
           : > "${ARTIFACTS_DIR}/pack_doctor.log"
           for pack_dir in dist/packs/*/; do
-            if [[ -f "${pack_dir}pack.yaml" || -f "${pack_dir}pack.json" ]]; then
+            if [[ -f "${pack_dir}pack.yaml" ]]; then
               {
                 echo "=== Pack doctor: ${pack_dir} ==="
                 greentic-pack doctor --validate "${pack_dir}"
@@ -132,7 +132,7 @@ jobs:
         if: always()
         shell: bash
         run: |
-          pack_count=$(find dist/packs -maxdepth 2 \( -name "pack.yaml" -o -name "pack.json" \) 2>/dev/null | wc -l | tr -d ' ')
+          pack_count=$(find dist/packs -maxdepth 2 -name "pack.yaml" 2>/dev/null | wc -l | tr -d ' ')
           {
             echo "### Nightly ${{ matrix.domain }} / ${{ matrix.test-type }}"
             echo ""
