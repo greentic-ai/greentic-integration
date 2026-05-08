@@ -31,10 +31,13 @@ fn e2e_mcp_pack_smoke() -> Result<()> {
             Some(p) => p,
             None => return Ok(()),
         };
+    // greentic-runner-cli is not a published crate on crates.io and the bin is
+    // gated behind the `legacy-gen-bindings` feature, so prebuilt release
+    // tarballs don't include it. Skip cleanly when it isn't already on PATH.
     let runner_cli = match support::ensure_tool(
         "greentic-runner-cli",
         "greentic-runner-cli",
-        strict,
+        false,
         "greentic-runner-cli",
     )? {
         Some(p) => p,
