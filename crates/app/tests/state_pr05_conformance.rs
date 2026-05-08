@@ -18,10 +18,14 @@ fn state_pr05_conformance() -> Result<()> {
             Some(path) => path,
             None => return Ok(()),
         };
+    // greentic-runner-cli is not a published crate on crates.io and the bin is
+    // gated behind the `legacy-gen-bindings` feature, so prebuilt release
+    // tarballs don't include it. Skip cleanly when it isn't already on PATH —
+    // CI installs it explicitly when this test should actually run.
     let runner_cli = match support::ensure_tool(
         "greentic-runner-cli",
         "greentic-runner-cli",
-        strict,
+        false,
         "greentic-runner-cli",
     )? {
         Some(path) => path,

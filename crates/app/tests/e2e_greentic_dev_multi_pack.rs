@@ -167,10 +167,13 @@ fn greentic_dev_multi_pack_shared_component() -> Result<()> {
     let pack_b_gtpack = find_gtpack(&pack_b)
         .context("gtpack for pack B not found; ensure pack build produced artifacts")?;
     // Sanity: run pack B to ensure shared component is usable and outputs expected marker.
+    // greentic-runner-cli is not a published crate on crates.io and the bin is
+    // gated behind the `legacy-gen-bindings` feature, so prebuilt release
+    // tarballs don't include it. Skip cleanly when it isn't already on PATH.
     let runner_cli = match support::ensure_tool(
         "greentic-runner-cli",
         "greentic-runner-cli",
-        strict,
+        false,
         "greentic-runner-cli",
     )? {
         Some(p) => p,
