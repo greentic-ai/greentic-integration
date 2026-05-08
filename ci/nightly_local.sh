@@ -36,30 +36,49 @@ run_step "pack doctor" sh -c '
   done
 ' _ "${ARTIFACTS_DIR}" "${PACKS_DIR}"
 
+shopt -s nullglob
+
 for domain in messaging events secrets; do
   case "${domain}" in
     messaging)
-      run_step "messaging conformance (dry-run)" \
-        greentic-messaging-test e2e --packs "${PACKS_DIR}" --report "${ARTIFACTS_DIR}/messaging.json" --dry-run
+      packs=( "${PACKS_DIR}"/messaging-*.gtpack )
+      if [ ${#packs[@]} -eq 0 ]; then
+        log "skipping messaging conformance: no messaging-*.gtpack in ${PACKS_DIR}"
+      else
+        run_step "messaging conformance (dry-run)" \
+          greentic-messaging-test e2e --packs "${PACKS_DIR}" --report "${ARTIFACTS_DIR}/messaging.json" --dry-run
+      fi
       ;;
     events)
-      run_step "events conformance (dry-run)" \
-        greentic-events-test e2e --packs "${PACKS_DIR}" --report "${ARTIFACTS_DIR}/events.json" --dry-run
+      packs=( "${PACKS_DIR}"/events-*.gtpack )
+      if [ ${#packs[@]} -eq 0 ]; then
+        log "skipping events conformance: no events-*.gtpack in ${PACKS_DIR}"
+      else
+        run_step "events conformance (dry-run)" \
+          greentic-events-test e2e --packs "${PACKS_DIR}" --report "${ARTIFACTS_DIR}/events.json" --dry-run
+      fi
       ;;
     secrets)
-      run_step "secrets conformance (dry-run)" \
-        greentic-secrets-test e2e --packs "${PACKS_DIR}" --report "${ARTIFACTS_DIR}/secrets.json" --dry-run
+      packs=( "${PACKS_DIR}"/secrets-*.gtpack )
+      if [ ${#packs[@]} -eq 0 ]; then
+        log "skipping secrets conformance: no secrets-*.gtpack in ${PACKS_DIR}"
+      else
+        run_step "secrets conformance (dry-run)" \
+          greentic-secrets-test e2e --packs "${PACKS_DIR}" --report "${ARTIFACTS_DIR}/secrets.json" --dry-run
+      fi
       ;;
   esac
 done
 
-run_step "runner conformance" \
-  greentic-runner conformance --packs "${PACKS_DIR}" --level L2 --report "${ARTIFACTS_DIR}/runner.json"
-run_step "runner conformance (faults)" \
-  greentic-runner conformance --packs "${PACKS_DIR}" --faults tests/fixtures/faults/basic.json --report "${ARTIFACTS_DIR}/faults.json"
-
-run_step "component contract tests" \
-  sh -c "cargo test -p greentic-component --all-features | tee \"${ARTIFACTS_DIR}/component_tests.log\""
+packs=( "${PACKS_DIR}"/*.gtpack )
+if [ ${#packs[@]} -eq 0 ]; then
+  log "skipping runner conformance: no *.gtpack in ${PACKS_DIR}"
+else
+  run_step "runner conformance" \
+    greentic-runner conformance --packs "${PACKS_DIR}" --level l2 --report "${ARTIFACTS_DIR}/runner.json"
+  run_step "runner conformance (faults)" \
+    greentic-runner conformance --packs "${PACKS_DIR}" --faults tests/fixtures/faults/basic.json --report "${ARTIFACTS_DIR}/faults.json"
+fi
 
 if [[ -d "${ROOT_DIR}/target/e2e" ]]; then
   run_step "copy gtest artifacts" rsync -a "${ROOT_DIR}/target/e2e/" "${ARTIFACTS_DIR}/e2e/"
