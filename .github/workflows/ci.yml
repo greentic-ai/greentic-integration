@@ -51,6 +51,8 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ env.GHCR_TOKEN != '' && env.GHCR_TOKEN || env.GITHUB_TOKEN }}
+      - name: Set up oras
+        uses: oras-project/setup-oras@v1
       - name: Fetch greentic-fast2flow release binaries
         env:
           GH_TOKEN: ${{ env.GREENTIC_FAST2FLOW_GH_TOKEN }}
