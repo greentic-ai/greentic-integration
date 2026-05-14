@@ -205,21 +205,6 @@ jobs:
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: |
             ${{ runner.os }}-cargo-
-      - name: Set up oras
-        uses: oras-project/setup-oras@v1
-      - name: Mint greentic-biz App token (for GHCR cross-org pull)
-        id: biz-app-token
-        uses: actions/create-github-app-token@v2
-        with:
-          app-id: ${{ secrets.GREENTIC_CI_APP_ID }}
-          private-key: ${{ secrets.GREENTIC_CI_APP_PRIVATE_KEY }}
-          owner: greentic-biz
-      - name: GHCR login (greentic-biz scope)
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ steps.biz-app-token.outputs.app-slug }}
-          password: ${{ steps.biz-app-token.outputs.token }}
       - name: Stage ingress-control fixture packs
         env:
           GH_TOKEN: ${{ env.GREENTIC_FAST2FLOW_GH_TOKEN }}
