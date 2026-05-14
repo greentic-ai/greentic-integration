@@ -4,6 +4,7 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 OUT_ROOT="${GREENTIC_FAST2FLOW_RELEASE_DIR:-${ROOT_DIR}/artifacts/fast2flow-release}"
 REPO="${GREENTIC_FAST2FLOW_GH_REPO:-greentic-biz/greentic-fast2flow}"
+GTPACK_OCI_REPO="${GREENTIC_FAST2FLOW_GTPACK_OCI_REPO:-ghcr.io/greentic-biz/providers/routing-hook/fast2flow.gtpack}"
 REQUIRE_GTPACK="${GREENTIC_FAST2FLOW_REQUIRE_GTPACK:-0}"
 ALLOW_MISSING_RELEASE="${GREENTIC_FAST2FLOW_ALLOW_MISSING_RELEASE:-1}"
 
@@ -116,13 +117,6 @@ elif kind == "host":
             and target in a
         ]
     )
-elif kind == "gtpack":
-    preferred = [
-        a for a in assets
-        if a.endswith(".gtpack")
-        and ("fast2flow" in a.lower())
-    ]
-    chosen = choose(preferred)
 else:
     chosen = ""
 
@@ -133,7 +127,6 @@ PY
 
 cli_asset="$(pick_asset cli)"
 host_asset="$(pick_asset host)"
-gtpack_asset="$(pick_asset gtpack)"
 
 if [[ -z "${cli_asset}" ]]; then
   log "error: could not find greentic-fast2flow release asset for target ${target}"
@@ -145,8 +138,22 @@ if [[ -z "${host_asset}" ]]; then
   exit 1
 fi
 
-if [[ "${REQUIRE_GTPACK}" == "1" && -z "${gtpack_asset}" ]]; then
-  log "error: release ${tag} does not contain a fast2flow .gtpack asset"
+# fast2flow.gtpack is published to GHCR via oras, not as a GitHub Release asset.
+# Pull it from the OCI registry; require oras only when REQUIRE_GTPACK=1.
+gtpack_pulled=""
+gtpack_oci_tmp="${tmp_dir}/gtpack-oci"
+if command -v oras >/dev/null 2>&1; then
+  mkdir -p "${gtpack_oci_tmp}"
+  if (cd "${gtpack_oci_tmp}" && oras pull "${GTPACK_OCI_REPO}:${tag}" >/dev/null 2>&1); then
+    gtpack_pulled="$(find "${gtpack_oci_tmp}" -type f -name 'fast2flow.gtpack' | head -n 1)"
+  fi
+elif [[ "${REQUIRE_GTPACK}" == "1" ]]; then
+  log "error: 'oras' is required to fetch ${GTPACK_OCI_REPO}:${tag} but was not found in PATH"
+  exit 1
+fi
+
+if [[ "${REQUIRE_GTPACK}" == "1" && -z "${gtpack_pulled}" ]]; then
+  log "error: failed to pull ${GTPACK_OCI_REPO}:${tag} from GHCR (oras pull). Ensure the runner is authenticated with packages:read and the tag exists."
   exit 1
 fi
 
@@ -163,13 +170,6 @@ gh release download "${tag}" \
   --pattern "${cli_asset}" \
   --pattern "${host_asset}"
 
-if [[ -n "${gtpack_asset}" ]]; then
-  gh release download "${tag}" \
-    --repo "${REPO}" \
-    --dir "${tmp_dir}" \
-    --pattern "${gtpack_asset}"
-fi
-
 tar -xzf "${tmp_dir}/${cli_asset}" -C "${release_dir}"
 tar -xzf "${tmp_dir}/${host_asset}" -C "${release_dir}"
 
@@ -178,9 +178,9 @@ cp "${release_dir}/greentic-fast2flow" "${latest_dir}/greentic-fast2flow"
 cp "${release_dir}/greentic-fast2flow-routing-host" "${latest_dir}/greentic-fast2flow-routing-host"
 chmod +x "${latest_dir}/greentic-fast2flow" "${latest_dir}/greentic-fast2flow-routing-host"
 
-if [[ -n "${gtpack_asset}" ]]; then
-  cp "${tmp_dir}/${gtpack_asset}" "${release_dir}/fast2flow.gtpack"
-  cp "${tmp_dir}/${gtpack_asset}" "${latest_dir}/fast2flow.gtpack"
+if [[ -n "${gtpack_pulled}" ]]; then
+  cp "${gtpack_pulled}" "${release_dir}/fast2flow.gtpack"
+  cp "${gtpack_pulled}" "${latest_dir}/fast2flow.gtpack"
 fi
 
 cat > "${latest_dir}/env.sh" <<EOF
@@ -192,9 +192,9 @@ EOF
 
 log "ready: ${latest_dir}/greentic-fast2flow"
 log "ready: ${latest_dir}/greentic-fast2flow-routing-host"
-if [[ -n "${gtpack_asset}" ]]; then
-  log "ready: ${latest_dir}/fast2flow.gtpack"
+if [[ -n "${gtpack_pulled}" ]]; then
+  log "ready: ${latest_dir}/fast2flow.gtpack (from ${GTPACK_OCI_REPO}:${tag})"
 else
-  log "warn: no fast2flow gtpack asset found in release ${tag}"
+  log "warn: fast2flow gtpack not pulled from ${GTPACK_OCI_REPO}:${tag}"
 fi
 log "env file: ${latest_dir}/env.sh"
