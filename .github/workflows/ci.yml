@@ -54,7 +54,6 @@ jobs:
       - name: Fetch greentic-fast2flow release binaries
         env:
           GH_TOKEN: ${{ env.GREENTIC_FAST2FLOW_GH_TOKEN }}
-          GREENTIC_FAST2FLOW_REQUIRE_GTPACK: "1"
         run: ./scripts/fetch_fast2flow_release.sh
       - name: Build ingress-control fixture packs
         env:
