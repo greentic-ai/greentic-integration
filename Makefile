@@ -54,7 +54,7 @@ e2e.fixtures: ## Stage ingress-control fixture packs used by app and nightly E2E
 	    export GREENTIC_CONTROL_CHAIN_PATH=../greentic-control-chain; \
 	  fi; \
 	fi; \
-	GREENTIC_FAST2FLOW_REQUIRE_GTPACK=1 $(SCRIPTS_DIR)/fetch_fast2flow_release.sh; \
+	$(SCRIPTS_DIR)/fetch_fast2flow_release.sh; \
 	GREENTIC_FAST2FLOW_GTPACK=artifacts/fast2flow-release/latest/fast2flow.gtpack \
 		$(SCRIPTS_DIR)/build_e2e_fixtures.sh
 
