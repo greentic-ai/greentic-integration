@@ -3,8 +3,8 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 OUT_ROOT="${GREENTIC_FAST2FLOW_RELEASE_DIR:-${ROOT_DIR}/artifacts/fast2flow-release}"
-REPO="${GREENTIC_FAST2FLOW_GH_REPO:-greentic-biz/greentic-fast2flow}"
-GTPACK_OCI_REPO="${GREENTIC_FAST2FLOW_GTPACK_OCI_REPO:-ghcr.io/greentic-biz/providers/routing-hook/fast2flow.gtpack}"
+REPO="${GREENTIC_FAST2FLOW_GH_REPO:-greenticai/greentic-fast2flow}"
+GTPACK_OCI_REPO="${GREENTIC_FAST2FLOW_GTPACK_OCI_REPO:-ghcr.io/greenticai/providers/routing-hook/fast2flow.gtpack}"
 REQUIRE_GTPACK="${GREENTIC_FAST2FLOW_REQUIRE_GTPACK:-0}"
 ALLOW_MISSING_RELEASE="${GREENTIC_FAST2FLOW_ALLOW_MISSING_RELEASE:-1}"
 
