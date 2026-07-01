@@ -42,7 +42,7 @@ fn e2e_ingress_control() -> Result<()> {
         return Ok(());
     }
 
-    let scope = env_or_default("GREENTIC_E2E_SCOPE", "demo");
+    let scope = env_or_default("GREENTIC_E2E_SCOPE", "demo:default");
     let flows_path = resolve_flows_fixture()?;
 
     let build_output = run_fast2flow_cli(
