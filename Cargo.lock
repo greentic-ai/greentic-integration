@@ -970,7 +970,7 @@ checksum = "d7a1e2f27636f116493b8b860f5546edb47c8d8f8ea73e1d2a20be88e28d1fea"
 
 [[package]]
 name = "deploy-plan-component"
-version = "1.1.0"
+version = "1.1.1-dev.0"
 dependencies = [
  "greentic-interfaces-guest",
  "serde_json",
@@ -1498,7 +1498,7 @@ dependencies = [
 
 [[package]]
 name = "greentic-integration"
-version = "1.1.0"
+version = "1.1.1-dev.0"
 dependencies = [
  "anyhow",
  "async-nats",
@@ -1546,7 +1546,7 @@ dependencies = [
 
 [[package]]
 name = "greentic-integration-core"
-version = "1.1.0"
+version = "1.1.1-dev.0"
 dependencies = [
  "serde",
  "thiserror 2.0.18",
@@ -1554,7 +1554,7 @@ dependencies = [
 
 [[package]]
 name = "greentic-integration-tester"
-version = "1.1.0"
+version = "1.1.1-dev.0"
 dependencies = [
  "anyhow",
  "clap",
@@ -1570,7 +1570,7 @@ dependencies = [
 
 [[package]]
 name = "greentic-integration-validator"
-version = "1.1.0"
+version = "1.1.1-dev.0"
 dependencies = [
  "anyhow",
  "clap",
@@ -3063,7 +3063,7 @@ dependencies = [
 
 [[package]]
 name = "providers-sim"
-version = "1.1.0"
+version = "1.1.1-dev.0"
 dependencies = [
  "hex",
  "serde",
@@ -3517,7 +3517,7 @@ dependencies = [
 
 [[package]]
 name = "runner-smoke"
-version = "1.1.0"
+version = "1.1.1-dev.0"
 dependencies = [
  "anyhow",
  "serde",
