@@ -40,17 +40,18 @@ jobs:
 
       - name: Install greentic CLIs
         shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          cargo binstall greentic-pack --no-confirm --force
-          cargo binstall greentic-messaging-test --no-confirm --force
-          if cargo binstall greentic-events-test --no-confirm --force; then
+          set -euo pipefail
+          ./ci/install_greentic_cli.sh greentic-pack greentic-messaging-test
+          if ./ci/install_greentic_cli.sh greentic-events-test; then
             echo "GREENTIC_EVENTS_TEST_AVAILABLE=1" >> "$GITHUB_ENV"
           else
             echo "GREENTIC_EVENTS_TEST_AVAILABLE=0" >> "$GITHUB_ENV"
             echo "greentic-events-test not available; skipping events conformance"
           fi
-          cargo binstall greentic-secrets-test --no-confirm --force
-          cargo binstall greentic-runner --no-confirm --force
+          ./ci/install_greentic_cli.sh greentic-secrets-test greentic-runner
 
       - name: Prepare packs
         shell: bash
@@ -146,7 +147,10 @@ jobs:
         if: always()
         shell: bash
         run: |
-          pack_count=$(find dist/packs -maxdepth 2 -name "pack.yaml" 2>/dev/null | wc -l | tr -d ' ')
+          # `find` exits non-zero when dist/packs was never created (an earlier
+          # step failed), and pipefail would then abort this always-run summary
+          # before it reports why the job failed.
+          pack_count=$( { find dist/packs -maxdepth 2 -name "pack.yaml" 2>/dev/null || true; } | wc -l | tr -d ' ')
           {
             echo "### Nightly ${{ matrix.domain }} / ${{ matrix.test-type }}"
             echo ""
@@ -173,11 +177,15 @@ jobs:
 
       - name: Install greentic CLIs
         shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          cargo binstall greentic-pack --no-confirm --force
-          cargo binstall greentic-component --no-confirm --force
-          cargo binstall greentic-flow --no-confirm --force
-          cargo binstall greentic-runner --no-confirm --force
+          set -euo pipefail
+          ./ci/install_greentic_cli.sh \
+            greentic-pack \
+            greentic-component \
+            greentic-flow \
+            greentic-runner
 
       - name: Run gtest smoke with triage
         shell: bash
