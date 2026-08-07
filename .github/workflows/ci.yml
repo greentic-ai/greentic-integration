@@ -78,11 +78,15 @@ jobs:
       - name: Setup tooling
         uses: ./.github/actions/ci-setup
       - name: Install greentic CLIs
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          cargo binstall greentic-pack --no-confirm --force --locked
-          cargo binstall greentic-component --no-confirm --force --locked
-          cargo binstall greentic-flow --no-confirm --force --locked
-          cargo binstall greentic-runner --no-confirm --force --locked
+          set -euo pipefail
+          ./ci/install_greentic_cli.sh \
+            greentic-pack \
+            greentic-component \
+            greentic-flow \
+            greentic-runner
       - name: Run gtest smoke scripts
         run: |
           cargo run -p greentic-integration-tester -- --test tests/gtests/00_smoke_validator.gtest
