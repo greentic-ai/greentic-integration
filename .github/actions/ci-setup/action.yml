@@ -5,6 +5,10 @@ inputs:
     description: Rust toolchain version
     required: false
     default: 1.95.0
+  github-token:
+    description: Token used to authenticate cargo-binstall release lookups
+    required: false
+    default: ${{ github.token }}
 runs:
   using: composite
   steps:
@@ -47,9 +51,12 @@ runs:
         fi
     - name: Install greentic-dev
       shell: bash
+      env:
+        GITHUB_TOKEN: ${{ inputs.github-token }}
       run: |
+        set -euo pipefail
         if ! command -v greentic-dev >/dev/null 2>&1; then
-          cargo binstall greentic-dev --no-confirm --force
+          "${GITHUB_WORKSPACE}/ci/install_greentic_cli.sh" greentic-dev
         fi
     - name: Install cargo-component
       shell: bash
